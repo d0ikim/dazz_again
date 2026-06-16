@@ -18,9 +18,9 @@ public class VenueService {
         return venueRepository.findByNameContaining(keyword); // Repository의 메서드 호출 → SQL 실행
     }
 
-    // 공연장 주소로 검색 — keyword가 주소에 포함된 공연장 목록 반환
-    public List<Venue> searchByAddress(String keyword) {
-        return venueRepository.findByAddressContaining(keyword); // Repository의 메서드 호출 → SQL 실행
+    // 공연장 위치로 검색 — keyword가 위치에 포함된 공연장 목록 반환
+    public List<Venue> searchByLocation(String keyword) {
+        return venueRepository.findByLocationContaining(keyword); // Repository의 메서드 호출 → SQL 실행
     }
 
     // 전체 공연장 목록 반환 — JpaRepository 기본 제공 메서드 사용

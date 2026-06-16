@@ -15,7 +15,7 @@ public interface VenueRepository extends JpaRepository<Venue, Long> {
     // 실행되는 SQL: SELECT * FROM venue WHERE name LIKE '%keyword%'
     List<Venue> findByNameContaining(String keyword);
 
-    // 주소에 키워드가 포함된 공연장 검색
-    // 실행되는 SQL: SELECT * FROM venue WHERE address LIKE '%keyword%'
-    List<Venue> findByAddressContaining(String keyword);
+    // 위치에 키워드가 포함된 공연장 검색
+    // 실행되는 SQL: SELECT * FROM venue WHERE location LIKE '%keyword%'
+    List<Venue> findByLocationContaining(String keyword);
 }
