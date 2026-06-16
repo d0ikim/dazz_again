@@ -47,3 +47,6 @@ out/
 # Spring Boot local config
 application-local.properties
 application-local.yml
+
+# 환경변수 파일 (비밀번호 등 민감 정보 — 절대 GitHub에 올리면 안 됨)
+.env
