@@ -12,7 +12,9 @@ import org.springframework.security.web.authentication.SimpleUrlAuthenticationSu
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
@@ -38,5 +40,6 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
 
         // 발급한 토큰을 응답 헤더에 담아서 클라이언트에 전달
         response.setHeader("Authorization", "Bearer " + token);
+//        log.info("[JWT 발급] userId={}, role={}, token={}", user.getId(), user.getRole(), token);
     }
 }
