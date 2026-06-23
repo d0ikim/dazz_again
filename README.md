@@ -51,3 +51,13 @@
 | Method | URL | 설명 | 인증 |
 |---|---|---|---|
 | GET | `/oauth2/authorization/kakao` | 카카오 로그인 시작 | 불필요 |
+
+---
+
+## Swagger 인증 사용 방법
+
+1. `/oauth2/authorization/kakao` 접속 → 카카오 로그인
+2. 개발자도구 Network 탭 → `login/oauth2/code/kakao` 요청 → Response Headers → `Authorization` 값 복사
+3. `http://localhost:8080/swagger-ui/index.html` 접속
+4. 우측 상단 **Authorize** 버튼 클릭 → 토큰 붙여넣기
+5. 이후 인증 필요한 API 자동으로 토큰 포함
