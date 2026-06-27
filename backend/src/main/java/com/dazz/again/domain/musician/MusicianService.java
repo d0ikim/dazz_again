@@ -1,12 +1,13 @@
 // 뮤지션 관련 비즈니스 로직을 처리하는 파일
 package com.dazz.again.domain.musician;
 
-import lombok.RequiredArgsConstructor;                         // Lombok: final 필드를 받는 생성자를 자동 생성 (의존성 주입에 사용)
-import org.springframework.data.domain.Sort;                   // 정렬 조건을 담는 객체
-import org.springframework.stereotype.Service;                 // 이 클래스가 비즈니스 로직을 담당하는 Service임을 Spring에게 알리는 어노테이션
-import org.springframework.transaction.annotation.Transactional; // DB 작업을 하나의 트랜잭션으로 묶어주는 어노테이션
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Sort;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.NoSuchElementException;
 
 @Service
 @RequiredArgsConstructor                                       // final로 선언된 musicianRepository를 받는 생성자를 Lombok이 자동 생성
@@ -20,6 +21,14 @@ public class MusicianService {
     // 전체 뮤지션 목록 반환 (id 오름차순)
     public List<Musician> findAll() {
         return musicianRepository.findAll(ID_ASC);
+    }
+
+    // id로 뮤지션 단건 조회 — 없으면 404로 이어지도록 예외를 던짐
+    public Musician findById(Long id) {
+        // JpaRepository 기본 제공 메서드. Optional<Musician>을 반환하므로
+        // orElseThrow로 없을 때 예외를 터뜨려 호출부(Controller)가 404로 처리할 수 있게 함
+        return musicianRepository.findById(id)
+                .orElseThrow(() -> new NoSuchElementException("뮤지션을 찾을 수 없습니다. id=" + id));
     }
 
     // 활동명으로 검색 (id 오름차순)

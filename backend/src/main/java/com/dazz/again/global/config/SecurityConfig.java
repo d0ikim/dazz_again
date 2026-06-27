@@ -13,6 +13,11 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import java.util.List;
 
 @Configuration      // "이 클래스가 Spring Security 설정파일이야"
 @EnableWebSecurity  // Spring Security 활성화 "기본security설정 끄고, 대신 여기있는 걸 써"
@@ -26,7 +31,7 @@ public class SecurityConfig {
     @Bean   // Spring은 객체를 직접 new로 안만들고, Spring Container가 대신 만들고 관리하는데, `Spring이 관리하는 객체`를 Bean이라고 부름."이 메서드가 반환하는 객체를 Spring이 빈으로 등록해서 관리해줘" 라는 뜻의 어노테이션
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-            // CSRF 비활성화: JWT는 stateless 방식이라 세션/쿠키를 안 쓰므로 CSRF 공격 대상이 아님
+            .cors(cors -> cors.configurationSource(corsConfigurationSource()))  // Security필터체인에 "CORS설정은 아래 메서드를 따라라"고 연결하는 한 줄
             .csrf(AbstractHttpConfigurer::disable)
 
             // 세션 미사용: JWT를 쓰면 서버가 로그인 상태를 세션으로 기억할 필요가 없음
@@ -51,6 +56,24 @@ public class SecurityConfig {
             // UsernamePasswordAuthenticationFilter 앞에 끼워넣어 모든 요청에서 먼저 실행되게 함
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
-        return http.build();    // 위에서 .csrf(), .sessionManagement(), .authorizeHttpRequests() 등으로 쌓아온 설정들을 최종확정해서 하나의 객체로 만드는것. 레고조각 다끼운다음 "완성!" 버튼누르는것과 같음.
-    }   // -> 여기까지 이 메서드를 실행해서 나온 SecurityFilterChain을, Spring이 알아서 서버에 적용함
+        return http.build();
+    }
+
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration config = new CorsConfiguration();
+        // 어떤 출처를 허용할지
+        config.setAllowedOrigins(List.of("http://localhost:5173"));
+        // 어떤 HTTP메서드를 허용할지
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+        // 어떤 요청헤더를 허용할지 (* = 전부)
+        config.setAllowedHeaders(List.of("*"));
+        // Authorization 헤더(JWT)를 포함한 요청 허용
+        config.setAllowCredentials(true);   // JWT 쿠키 또는 Authorization 헤더 허용
+
+        // "모든 URL경로(/**)에 위 설정 적용해라"
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", config);
+        return source;
+    }
 }

@@ -8,9 +8,12 @@ import io.swagger.v3.oas.annotations.tags.Tag;               // API 그룹 이�
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.NoSuchElementException;
 
 import java.util.List;
 
@@ -31,6 +34,21 @@ public class MusicianController {
     public ResponseEntity<List<Musician>> findAll() {
         List<Musician> musicians = musicianService.findAll();
         return ResponseEntity.ok(musicians);    // HTTP응답을 만들어야하므로 200상태코드까지 포함한 Entity를 포장해서 내보냄
+    }
+
+    @Operation(summary = "뮤지션 단건 조회", description = "id로 특정 뮤지션 1명을 조회합니다.")
+    @ApiResponse(responseCode = "200", description = "조회 성공")
+    @ApiResponse(responseCode = "404", description = "해당 id의 뮤지션 없음")
+    @GetMapping("/{id}")
+    public ResponseEntity<Musician> findById(
+            @Parameter(description = "뮤지션 id", example = "1")
+            @PathVariable Long id
+    ) {
+        try {
+            return ResponseEntity.ok(musicianService.findById(id));
+        } catch (NoSuchElementException e) {
+            return ResponseEntity.notFound().build();
+        }
     }
 
     @Operation(
