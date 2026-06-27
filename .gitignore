@@ -50,3 +50,6 @@ application-local.yml
 
 # 환경변수 파일 (비밀번호 등 민감 정보 — 절대 GitHub에 올리면 안 됨)
 .env
+
+# 디자인 참고 자료 (git에 올리지 않음)
+design_handoff/
