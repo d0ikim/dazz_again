@@ -1,0 +1,50 @@
+export default function Icon({ name, size = 18, color = 'currentColor', stroke = 1.6 }) {
+  const props = { width: size, height: size, viewBox: '0 0 24 24', fill: 'none', stroke: color, strokeWidth: stroke, strokeLinecap: 'round', strokeLinejoin: 'round' };
+  switch (name) {
+    case 'home': return <svg {...props}><path d="M3 10.5L12 3l9 7.5V20a1 1 0 01-1 1h-5v-7h-6v7H4a1 1 0 01-1-1z" /></svg>;
+    case 'user': return <svg {...props}><circle cx="12" cy="8" r="4" /><path d="M4 21c0-4 4-7 8-7s8 3 8 7" /></svg>;
+    case 'users': return <svg {...props}><circle cx="9" cy="8" r="3.5" /><path d="M2.5 20c0-3 2.9-5.5 6.5-5.5s6.5 2.5 6.5 5.5" /><circle cx="17" cy="9" r="2.8" /><path d="M21.5 20c0-2.4-2-4.5-4.5-4.5" /></svg>;
+    case 'music': return <svg {...props}><path d="M9 18V6l12-2v12" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" /></svg>;
+    case 'calendar': return <svg {...props}><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M16 3v4M8 3v4M3 10h18" /></svg>;
+    case 'graph': return <svg {...props}><circle cx="6" cy="6" r="2.5" /><circle cx="18" cy="6" r="2.5" /><circle cx="12" cy="18" r="2.5" /><circle cx="6" cy="18" r="2" /><path d="M7.5 7.5L11 16M16.5 7.5L13 16M8 18h2" /></svg>;
+    case 'search': return <svg {...props}><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.5-4.5" /></svg>;
+    case 'plus': return <svg {...props}><path d="M12 5v14M5 12h14" /></svg>;
+    case 'edit': return <svg {...props}><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 113 3L7 19l-4 1 1-4z" /></svg>;
+    case 'check': return <svg {...props}><path d="M5 12l5 5L20 6" /></svg>;
+    case 'x': return <svg {...props}><path d="M6 6l12 12M18 6L6 18" /></svg>;
+    case 'arrow-right': return <svg {...props}><path d="M5 12h14M13 5l7 7-7 7" /></svg>;
+    case 'arrow-left': return <svg {...props}><path d="M19 12H5M11 5l-7 7 7 7" /></svg>;
+    case 'external': return <svg {...props}><path d="M15 3h6v6M10 14L21 3M18 13v7H4V6h7" /></svg>;
+    case 'share': return <svg {...props}><circle cx="6" cy="12" r="3" /><circle cx="18" cy="6" r="3" /><circle cx="18" cy="18" r="3" /><path d="M8.5 10.5L15.5 7.5M8.5 13.5L15.5 16.5" /></svg>;
+    case 'copy': return <svg {...props}><rect x="9" y="9" width="11" height="11" rx="2" /><path d="M5 15V5a2 2 0 012-2h10" /></svg>;
+    case 'settings': return <svg {...props}><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09A1.65 1.65 0 008 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 004.6 15a1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.6a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z" /></svg>;
+    case 'image': return <svg {...props}><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="M21 15l-5-5L5 21" /></svg>;
+    case 'mail': return <svg {...props}><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M3 7l9 6 9-6" /></svg>;
+    case 'spark': return <svg {...props}><path d="M12 3l1.8 4.5L18 9l-4.2 1.5L12 15l-1.8-4.5L6 9l4.2-1.5z" /><path d="M19 16l.9 2 2 .9-2 .9-.9 2-.9-2-2-.9 2-.9z" /></svg>;
+    case 'pin': return <svg {...props}><path d="M12 21s7-6 7-12a7 7 0 10-14 0c0 6 7 12 7 12z" /><circle cx="12" cy="9" r="2.5" /></svg>;
+    case 'link': return <svg {...props}><path d="M10 14a5 5 0 007 0l3-3a5 5 0 00-7-7l-1 1" /><path d="M14 10a5 5 0 00-7 0l-3 3a5 5 0 007 7l1-1" /></svg>;
+    case 'instagram': return <svg {...props}><rect x="3" y="3" width="18" height="18" rx="5" /><circle cx="12" cy="12" r="4" /><circle cx="17.5" cy="6.5" r="0.6" fill="currentColor" /></svg>;
+    case 'youtube': return <svg {...props}><rect x="2" y="5" width="20" height="14" rx="3" /><path d="M10 9.5v5l5-2.5z" fill="currentColor" stroke="none" /></svg>;
+    case 'trash': return <svg {...props}><path d="M4 7h16M9 7V4h6v3M6 7l1 13a2 2 0 002 2h6a2 2 0 002-2l1-13" /></svg>;
+    case 'globe': return <svg {...props}><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3a14 14 0 010 18M12 3a14 14 0 000 18" /></svg>;
+    case 'play': return <svg {...props}><path d="M8 5.5v13l11-6.5z" fill="currentColor" stroke="none" /></svg>;
+    case 'building': return <svg {...props}><rect x="4" y="3" width="16" height="18" rx="1.5" /><path d="M9 7h2M13 7h2M9 11h2M13 11h2M9 15h2M13 15h2M10 21v-3h4v3" /></svg>;
+    case 'navigation': return <svg {...props}><path d="M12 2l8 19-8-5-8 5z" /></svg>;
+    case 'award': return <svg {...props}><circle cx="12" cy="9" r="6" /><path d="M8.5 14L7 22l5-3 5 3-1.5-8" /></svg>;
+    case 'briefcase': return <svg {...props}><rect x="3" y="7" width="18" height="13" rx="2" /><path d="M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2M3 12h18" /></svg>;
+    case 'layout': return <svg {...props}><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18M9 9v12" /></svg>;
+    case 'clock': return <svg {...props}><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>;
+    case 'sliders': return <svg {...props}><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0" /><circle cx="16" cy="6" r="2" fill="var(--paper)" /><circle cx="10" cy="12" r="2" fill="var(--paper)" /><circle cx="18" cy="18" r="2" fill="var(--paper)" /></svg>;
+    case 'star': return <svg {...props}><path d="M12 3l2.6 5.7 6.2.7-4.6 4.2 1.3 6.1L12 16.8 6.5 19.9l1.3-6.1L3.2 9.6l6.2-.7z" /></svg>;
+    case 'phone': return <svg {...props}><path d="M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2z" /></svg>;
+    case 'shield': return <svg {...props}><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z" /><path d="M9 12l2 2 4-4" /></svg>;
+    case 'ticket': return <svg {...props}><path d="M3 9a2 2 0 002-2h14a2 2 0 002 2 2 2 0 000 4 2 2 0 00-2 2H5a2 2 0 00-2-2 2 2 0 000-4z" /><path d="M14 7v2M14 13v2M14 17v0" /></svg>;
+    case 'inbox': return <svg {...props}><path d="M4 13l2-8h12l2 8M4 13v5a1 1 0 001 1h14a1 1 0 001-1v-5M4 13h5l1 2h4l1-2h5" /></svg>;
+    case 'database': return <svg {...props}><ellipse cx="12" cy="5" rx="8" ry="3" /><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6" /></svg>;
+    case 'dashboard': return <svg {...props}><rect x="3" y="3" width="7" height="9" rx="1" /><rect x="14" y="3" width="7" height="5" rx="1" /><rect x="14" y="12" width="7" height="9" rx="1" /><rect x="3" y="16" width="7" height="5" rx="1" /></svg>;
+    case 'logout': return <svg {...props}><path d="M15 4h3a2 2 0 012 2v12a2 2 0 01-2 2h-3M10 17l-5-5 5-5M5 12h11" /></svg>;
+    case 'chat': return <svg {...props}><path d="M12 4C7 4 3 7.1 3 11c0 2.4 1.6 4.6 4 5.9-.2.9-.7 2.3-1.3 3.1-.2.3 0 .6.4.5 1.8-.4 3.4-1.3 4.3-2 .5.1 1 .1 1.6.1 5 0 9-3.1 9-7s-4-7-9-7z" fill="currentColor" stroke="none" /></svg>;
+    case 'lock': return <svg {...props}><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 018 0v3" /></svg>;
+    default: return <svg {...props}><circle cx="12" cy="12" r="9" /></svg>;
+  }
+}

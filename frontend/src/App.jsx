@@ -1,122 +1,194 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import { useState, useEffect } from 'react';
+import './styles/global.css';
 
-function App() {
-  const [count, setCount] = useState(0)
+import Topbar from './components/Topbar';
+import Sidebar from './components/Sidebar';
+import AdminSidebar from './components/AdminSidebar';
+import Toast from './components/Toast';
+
+import KakaoLoginModal from './pages/auth/KakaoLoginModal';
+import LoginGate from './pages/auth/LoginGate';
+import RoleGate from './pages/auth/RoleGate';
+import ScreenBecomeMusician from './pages/auth/ScreenBecomeMusician';
+import ScreenClaimExisting from './pages/auth/ScreenClaimExisting';
+import ScreenPending from './pages/auth/ScreenPending';
+
+import ScreenOnboarding from './pages/onboarding/ScreenOnboarding';
+
+import ScreenDirectory from './pages/visitor/ScreenDirectory';
+import ScreenPublicProfile from './pages/visitor/ScreenPublicProfile';
+
+import ScreenVenues from './pages/venues/ScreenVenues';
+
+import ScreenConcerts from './pages/concerts/ScreenConcerts';
+import ScreenConcertDetail from './pages/concerts/ScreenConcertDetail';
+
+import ScreenPlayDB from './pages/resume/ScreenPlayDB';
+import ScreenResumePublic from './pages/resume/ScreenResumePublic';
+
+import ScreenDashboard from './pages/dashboard/ScreenDashboard';
+import ScreenProfileEdit from './pages/dashboard/ScreenProfileEdit';
+import ScreenShowsList from './pages/dashboard/ScreenShowsList';
+
+import ScreenAdminHome from './pages/admin/ScreenAdminHome';
+import ScreenAdminVerify from './pages/admin/ScreenAdminVerify';
+import ScreenAdminVenues from './pages/admin/ScreenAdminVenues';
+import ScreenAdminConcerts from './pages/admin/ScreenAdminConcerts';
+
+import { DATA } from './data/mockData';
+
+const MUSICIAN_ROUTES = new Set(['dashboard', 'profile-edit', 'shows-list', 'albums-list', 'graph-mine', 'resume-public']);
+const ADMIN_ROUTES = new Set(['admin-home', 'admin-verify', 'admin-venues', 'admin-concerts']);
+
+export default function App() {
+  const parseHash = () => {
+    const hash = window.location.hash.slice(1) || 'directory';
+    const [r, ...rest] = hash.split('/');
+    const params = rest.length ? JSON.parse(decodeURIComponent(rest.join('/'))) : {};
+    return { route: r, params };
+  };
+
+  const [routeState, setRouteState] = useState(parseHash);
+  const [auth, setAuth] = useState({ role: 'guest' });
+  const [toast, setToast] = useState(null);
+  const [loginModal, setLoginModal] = useState(false);
+  const [loginReason, setLoginReason] = useState(null);
+  const [me, setMe] = useState(DATA.me);
+
+  const route = routeState.route;
+  const routeParams = routeState.params;
+
+  useEffect(() => {
+    const onPop = () => setRouteState(parseHash());
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+
+  const navigate = (r, params = {}) => {
+    const encoded = Object.keys(params).length
+      ? '#' + r + '/' + encodeURIComponent(JSON.stringify(params))
+      : '#' + r;
+    history.pushState({ r, params }, '', encoded);
+    setRouteState({ route: r, params });
+    window.scrollTo(0, 0);
+  };
+
+  const showToast = (msg, kind = 'wine') => {
+    setToast({ msg, kind });
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  const openLogin = (reason) => {
+    setLoginReason(reason || null);
+    setLoginModal(true);
+  };
+
+  const handleLogin = ({ name, userId, role }) => {
+    if (role === 'admin') {
+      setAuth({ role: 'admin', name: '관리자', userId: 'admin_001' });
+      setLoginModal(false);
+      navigate('admin-home');
+      showToast('관리자 모드로 로그인됐습니다');
+    } else {
+      setAuth({ role: 'general', name, userId });
+      setLoginModal(false);
+      showToast(`${name}님으로 로그인됐습니다`);
+      if (loginReason === 'become') navigate('become-musician');
+    }
+  };
+
+  const handleVerifyRequest = () => {
+    setAuth((a) => ({ ...a, pending: true }));
+    navigate('pending');
+    showToast('인증 신청이 접수됐습니다');
+  };
+
+  const handleLogout = () => {
+    setAuth({ role: 'guest' });
+    navigate('directory');
+    showToast('로그아웃됐습니다', 'ink');
+  };
+
+  const isAdmin = auth.role === 'admin';
+  const isMusician = auth.role === 'musician';
+  const isGuest = auth.role === 'guest';
+  const isGeneral = auth.role === 'general';
+
+  const needsLogin = isGuest && (
+    MUSICIAN_ROUTES.has(route) || ADMIN_ROUTES.has(route) ||
+    route === 'become-musician' || route === 'claim-existing' ||
+    route === 'onboarding' || route === 'pending'
+  );
+  const needsMusician = (isGuest || isGeneral) && MUSICIAN_ROUTES.has(route);
+  const needsAdmin = !isAdmin && ADMIN_ROUTES.has(route);
+
+  const layoutAdmin = isAdmin && ADMIN_ROUTES.has(route);
+  const layoutDash = isMusician && MUSICIAN_ROUTES.has(route);
+  const useLayout = layoutAdmin || layoutDash;
+
+  const renderContent = () => {
+    if (needsLogin) return <LoginGate onLoginClick={openLogin} />;
+    if (needsAdmin) return <RoleGate navigate={navigate} title="관리자 전용" sub="이 페이지는 관리자만 접근할 수 있어요." />;
+    if (needsMusician) return <RoleGate navigate={navigate} pending={auth.pending} />;
+
+    switch (route) {
+      case 'directory': return <ScreenDirectory navigate={navigate} auth={auth} onLoginClick={openLogin} />;
+      case 'profile-public': return <ScreenPublicProfile uuid={routeParams.uuid || DATA.me.uuid} navigate={navigate} auth={auth} />;
+      case 'venues': return <ScreenVenues navigate={navigate} />;
+      case 'concerts': return <ScreenConcerts navigate={navigate} />;
+      case 'concert-detail': return <ScreenConcertDetail concertId={routeParams.concertId} navigate={navigate} />;
+      case 'playdb': return <ScreenPlayDB uuid={routeParams.uuid} navigate={navigate} />;
+      case 'resume-public': return <ScreenResumePublic navigate={navigate} />;
+
+      case 'become-musician': return <ScreenBecomeMusician navigate={navigate} auth={auth} />;
+      case 'claim-existing': return <ScreenClaimExisting navigate={navigate} onSubmitRequest={handleVerifyRequest} />;
+      case 'onboarding': return <ScreenOnboarding navigate={navigate} onSubmitRequest={handleVerifyRequest} />;
+      case 'pending': return <ScreenPending navigate={navigate} auth={auth} />;
+
+      case 'dashboard': return <ScreenDashboard navigate={navigate} me={me} />;
+      case 'profile-edit': return <ScreenProfileEdit me={me} navigate={navigate} onUpdate={(f) => setMe((p) => ({ ...p, ...f }))} onToast={showToast} />;
+      case 'shows-list': return <ScreenShowsList navigate={navigate} onToast={showToast} />;
+      case 'albums-list': return <ScreenShowsList navigate={navigate} onToast={showToast} />;
+      case 'graph-mine': return <ScreenPlayDB uuid={DATA.me.uuid} navigate={navigate} />;
+
+      case 'admin-home': return <ScreenAdminHome navigate={navigate} />;
+      case 'admin-verify': return <ScreenAdminVerify navigate={navigate} onToast={showToast} />;
+      case 'admin-venues': return <ScreenAdminVenues navigate={navigate} onToast={showToast} />;
+      case 'admin-concerts': return <ScreenAdminConcerts navigate={navigate} onToast={showToast} />;
+
+      default: return <ScreenDirectory navigate={navigate} />;
+    }
+  };
+
+  const topbarMode = isAdmin ? 'admin' : isMusician ? 'musician' : isGeneral ? 'general' : 'visitor';
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+    <div className={`app ${useLayout ? 'dashboard' : ''}`}>
+      <Topbar
+        route={route}
+        navigate={navigate}
+        mode={topbarMode}
+        me={me}
+        auth={auth}
+        onLoginClick={openLogin}
+        onLogout={handleLogout}
+      />
 
-      <div className="ticks"></div>
+      {useLayout ? (
+        <>
+          {layoutAdmin ? (
+            <AdminSidebar route={route} navigate={navigate} onLogout={handleLogout} />
+          ) : (
+            <Sidebar route={route} navigate={navigate} me={me} onLogout={handleLogout} />
+          )}
+          <main>{renderContent()}</main>
+        </>
+      ) : (
+        renderContent()
+      )}
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+      {toast && <Toast msg={toast.msg} kind={toast.kind} />}
+      {loginModal && <KakaoLoginModal onClose={() => setLoginModal(false)} onLogin={handleLogin} reason={loginReason} />}
+    </div>
+  );
 }
-
-export default App
