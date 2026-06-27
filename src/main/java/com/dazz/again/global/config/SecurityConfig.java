@@ -35,7 +35,7 @@ public class SecurityConfig {
 
             // URL별 접근 권한(인가) 설정
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/venues/**", "/api/musicians/**").permitAll()    // 공연장/뮤지션 조회는 누구나
+                .requestMatchers("/api/venues/**", "/api/musicians/**", "/api/performances/**").permitAll()    // 공연장/뮤지션/공연 조회는 누구나
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()   // Swagger 문서는 누구나
                 .requestMatchers("/oauth2/**", "/login/**").permitAll()             // 카카오 로그인 URL은 누구나
                 .anyRequest().authenticated()                                        // 나머지는 로그인 필요
