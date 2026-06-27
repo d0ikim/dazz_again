@@ -21,12 +21,12 @@
 | `feat/musician-search` | 뮤지션 목록 조회 및 활동명/악기 키워드 검색 API |
 | `feat/auth-user` | 카카오 소셜 로그인 + JWT 발급/검증 + 유저 도메인 (GENERAL/MUSICIAN/ADMIN) |
 | `feat/musician-verify` | 뮤지션 인증 신청 API (신청/상태조회) |
+| `feat/performance` | 공연 목록 조회 및 공연명/장르 키워드 검색 API |
 
 ### 🔲 남은 작업
 | 브랜치 | 내용 |
 |---|---|
 | `feat/musician-profile` | 뮤지션 프로필 관리 (본인 수정) |
-| `feat/concert-search` | 공연 목록 조회 및 검색, 출연진 등록 |
 | `feat/network-map` | 공연 출연진 기반 인맥지도 자동 생성 |
 
 ---
@@ -52,6 +52,13 @@
 |---|---|---|---|
 | POST | `/api/verify/musician` | 뮤지션 인증 신청 | 필요 |
 | GET | `/api/verify/musician/me` | 내 인증 신청 상태 조회 | 필요 |
+
+### 공연
+| Method | URL | 설명 | 인증 |
+|---|---|---|---|
+| GET | `/api/performances` | 전체 공연 목록 | 불필요 |
+| GET | `/api/performances/search?type=title&keyword=` | 공연명 검색 | 불필요 |
+| GET | `/api/performances/search?type=genre&keyword=` | 장르 검색 | 불필요 |
 
 ### 인증
 | Method | URL | 설명 | 인증 |
