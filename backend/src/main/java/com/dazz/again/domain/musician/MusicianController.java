@@ -82,4 +82,21 @@ public class MusicianController {
 
         return ResponseEntity.ok(result);
     }
+
+    @Operation(summary = "뮤지션 인맥지도 조회", description = "특정 뮤지션을 중심으로 함께 공연한 협연자 목록과 협연 횟수를 반환합니다.")
+    @ApiResponse(responseCode = "200", description = "조회 성공")
+    @ApiResponse(responseCode = "404", description = "해당 id의 뮤지션 없음")
+    @GetMapping("/{id}/graph")
+    public ResponseEntity<GraphResponse> getGraph(
+            @Parameter(description = "중심 뮤지션 id", example = "1")
+            @PathVariable Long id
+    ) {
+        // MusicianService.getGraph()가 내부적으로 findById()를 호출하므로
+        // 뮤지션이 없으면 NoSuchElementException이 발생 → 404 반환
+        try {
+            return ResponseEntity.ok(musicianService.getGraph(id));
+        } catch (NoSuchElementException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
 }
