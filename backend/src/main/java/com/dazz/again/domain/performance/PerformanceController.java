@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;               // API 그룹 이�
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -63,5 +64,15 @@ public class PerformanceController {
         }
 
         return ResponseEntity.ok(result);
+    }
+
+    @Operation(summary = "뮤지션별 공연 목록 조회", description = "특정 뮤지션이 출연한 공연 목록을 공연시작시간 오름차순으로 반환합니다.")
+    @ApiResponse(responseCode = "200", description = "조회 성공")
+    @GetMapping("/musician/{musicianId}")
+    public ResponseEntity<List<Performance>> findByMusicianId(
+            @Parameter(description = "뮤지션 id", example = "1")
+            @PathVariable Long musicianId
+    ) {
+        return ResponseEntity.ok(performanceService.findByMusicianId(musicianId));
     }
 }

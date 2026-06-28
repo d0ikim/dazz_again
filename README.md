@@ -3,12 +3,19 @@
 서울 재즈 씬을 위한 플랫폼 — 공연장·뮤지션·공연 검색, 인맥지도
 
 ## 기술 스택
+
+**Backend**
 - Java 21 / Spring Boot 4.1
 - Spring Data JPA / PostgreSQL
 - Spring Security / OAuth2 (카카오 소셜 로그인)
 - JWT (jjwt 0.12)
 - Swagger (springdoc-openapi)
 - Lombok
+
+**Frontend**
+- React 19 / Vite
+- 순수 CSS (디자인 시스템 직접 구현)
+- 상태 기반 라우팅 (history.pushState)
 
 ---
 
@@ -22,12 +29,17 @@
 | `feat/auth-user` | 카카오 소셜 로그인 + JWT 발급/검증 + 유저 도메인 (GENERAL/MUSICIAN/ADMIN) |
 | `feat/musician-verify` | 뮤지션 인증 신청 API (신청/상태조회) |
 | `feat/performance` | 공연 목록 조회 및 공연명/장르 키워드 검색 API |
+| `feat/frontend-setup` | React 프론트엔드 전체 구현 (디렉토리, 공연장, 공연, 이력서, 대시보드, 어드민, 인맥지도) |
+| `feat/connect-api` | CORS 설정, 뮤지션 단건 조회 API (`GET /api/musicians/{id}`) |
 
 ### 🔲 남은 작업
-| 브랜치 | 내용 |
-|---|---|
-| `feat/musician-profile` | 뮤지션 프로필 관리 (본인 수정) |
-| `feat/network-map` | 공연 출연진 기반 인맥지도 자동 생성 |
+| 내용 |
+|---|
+| 특정 뮤지션의 공연 목록 API (`GET /api/performances/musician/{id}`) |
+| 뮤지션 인맥지도 ego-network API (`GET /api/musicians/{id}/graph`) |
+| 뮤지션 프로필 수정 API (`PUT /api/musicians/me`) |
+| 어드민 인증 관리 API (승인/반려) |
+| 프론트엔드 ↔ 백엔드 실제 연결 |
 
 ---
 
@@ -44,6 +56,7 @@
 | Method | URL | 설명 | 인증 |
 |---|---|---|---|
 | GET | `/api/musicians` | 전체 뮤지션 목록 | 불필요 |
+| GET | `/api/musicians/{id}` | 뮤지션 단건 조회 | 불필요 |
 | GET | `/api/musicians/search?type=stageName&keyword=` | 활동명 검색 | 불필요 |
 | GET | `/api/musicians/search?type=position&keyword=` | 악기 검색 | 불필요 |
 

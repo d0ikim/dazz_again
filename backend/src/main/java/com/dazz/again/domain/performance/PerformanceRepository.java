@@ -1,9 +1,11 @@
 // 공연 DB 조회 쿼리를 정의하는 파일
 package com.dazz.again.domain.performance;
 
-import org.springframework.data.domain.Sort;           // 정렬 조건을 담는 객체
-import org.springframework.data.jpa.repository.JpaRepository; // Spring Data JPA가 제공하는 기본 DB 조작 인터페이스
-import org.springframework.stereotype.Repository;      // 이 인터페이스가 DB 접근 역할임을 Spring에게 알리는 어노테이션
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
 
 import java.util.List;
 
@@ -22,4 +24,14 @@ public interface PerformanceRepository extends JpaRepository<Performance, Long> 
     // 장르로 공연 검색 (start_time 오름차순)
     // 실행되는 SQL: SELECT * FROM performance WHERE genre LIKE '%keyword%' ORDER BY start_time ASC
     List<Performance> findByGenreContaining(String keyword, Sort sort);
+
+    // 특정 뮤지션이 출연한 공연 목록 (start_time 오름차순)
+    // performance_lineup 테이블을 조인해야 해서 메서드 이름 자동생성 방식으로는 불가능 → @Query로 직접 JPQL 작성
+    // JPQL: 테이블명 대신 엔티티 클래스명(PerformanceLineup), 컬럼명 대신 필드명(musician.id)을 씀
+    // 실행되는 SQL: SELECT p.* FROM performance p
+    //              JOIN performance_lineup pl ON p.id = pl.performance_id
+    //              WHERE pl.musician_id = :musicianId
+    //              ORDER BY p.start_time ASC
+    @Query("SELECT pl.performance FROM PerformanceLineup pl WHERE pl.musician.id = :musicianId ORDER BY pl.performance.startTime ASC")
+    List<Performance> findByMusicianId(@Param("musicianId") Long musicianId);
 }

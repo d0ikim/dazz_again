@@ -31,4 +31,9 @@ public class PerformanceService {
     public List<Performance> searchByGenre(String keyword) {
         return performanceRepository.findByGenreContaining(keyword, START_TIME_ASC);
     }
+
+    // 특정 뮤지션이 출연한 공연 목록 (공연시작시간 오름차순)
+    public List<Performance> findByMusicianId(Long musicianId) {
+        return performanceRepository.findByMusicianId(musicianId);
+    }
 }
