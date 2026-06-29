@@ -50,4 +50,19 @@ public class Musician {
 
     @Column(columnDefinition = "TEXT")
     private String sourceUrl;                              // 출처 URL — NULL 허용
+
+    @Column(unique = true)               // 한 유저가 뮤지션 프로필을 하나만 가질 수 있도록 유일값 제약
+    private Long userId;                 // 이 뮤지션 프로필의 주인 유저 ID (NULL이면 관리자가 입력한 데이터)
+
+    // MUSICIAN 유저가 자신의 프로필을 수정할 때 호출하는 메서드
+    // 전달받은 값이 null이면 기존 값을 그대로 유지 (부분 수정 지원)
+    public void updateProfile(String stageName, String realName, String position,
+                              String bio, String snsUrl, String profileImageUrl) {
+        if (stageName != null)       this.stageName       = stageName;
+        if (realName != null)        this.realName        = realName;
+        if (position != null)        this.position        = position;
+        if (bio != null)             this.bio             = bio;
+        if (snsUrl != null)          this.snsUrl          = snsUrl;
+        if (profileImageUrl != null) this.profileImageUrl = profileImageUrl;
+    }
 }

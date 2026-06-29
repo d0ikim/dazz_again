@@ -4,11 +4,15 @@ package com.dazz.again.domain.musician;
 import io.swagger.v3.oas.annotations.Operation;              // API 메서드 설명 어노테이션
 import io.swagger.v3.oas.annotations.Parameter;              // API 파라미터 설명 어노테이션
 import io.swagger.v3.oas.annotations.responses.ApiResponse;  // API 응답 코드 설명 어노테이션
+import io.swagger.v3.oas.annotations.security.SecurityRequirement; // Swagger에서 자물쇠 아이콘 표시용
 import io.swagger.v3.oas.annotations.tags.Tag;               // API 그룹 이름 어노테이션
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder; // 현재 요청의 인증 정보 저장소
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;   // HTTP PUT 메서드 매핑 어노테이션
+import org.springframework.web.bind.annotation.RequestBody;  // 요청 body의 JSON을 Java 객체로 변환하는 어노테이션
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -24,6 +28,21 @@ import java.util.List;
 public class MusicianController {
 
     private final MusicianService musicianService;
+
+    @Operation(
+            summary = "내 뮤지션 프로필 수정",
+            description = "로그인한 MUSICIAN 유저가 자신의 프로필을 수정합니다. 보내지 않은 필드는 기존 값이 유지됩니다.",
+            security = @SecurityRequirement(name = "bearerAuth") // Swagger에서 자물쇠 아이콘 표시
+    )
+    @ApiResponse(responseCode = "200", description = "수정 성공")
+    @ApiResponse(responseCode = "401", description = "토큰 없음 또는 만료")
+    @ApiResponse(responseCode = "403", description = "MUSICIAN 역할이 아님")
+    @PutMapping("/me")
+    public ResponseEntity<Musician> updateMyProfile(@RequestBody MusicianUpdateRequest request) {
+        // JwtFilter가 SecurityContextHolder에 저장한 userId를 꺼냄
+        Long userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        return ResponseEntity.ok(musicianService.updateMyProfile(userId, request));
+    }
 
     @Operation(
             summary = "전체 뮤지션 목록 조회",

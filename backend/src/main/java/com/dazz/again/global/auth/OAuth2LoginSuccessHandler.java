@@ -38,8 +38,9 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
         // 유저 ID와 역할로 JWT 발급
         String token = jwtProvider.generateToken(user.getId(), user.getRole().name());
 
-        // 발급한 토큰을 응답 헤더에 담아서 클라이언트에 전달
-        response.setHeader("Authorization", "Bearer " + token);
-//        log.info("[JWT 발급] userId={}, role={}, token={}", user.getId(), user.getRole(), token);
+        // 발급한 토큰을 URL 파라미터에 담아 프론트엔드로 리다이렉트
+        // 브라우저가 응답 헤더를 직접 읽을 수 없으므로, URL로 전달하는 것이 표준적인 방법
+        // 프론트엔드: http://localhost:5173?token=eyJ... 에서 token 파라미터를 읽어 저장
+        response.sendRedirect("http://localhost:5173?token=" + token);
     }
 }

@@ -57,7 +57,7 @@ export default function Topbar({ route, navigate, mode = 'visitor', me, auth = {
             <button className="btn ghost sm" onClick={() => navigate('profile-public')}>
               <Icon name="external" size={14} /> 공개 프로필 보기
             </button>
-            <Avatar name={me?.name || ''} tier={me?.tier} />
+            <Avatar name={auth.name || me?.name || ''} tier={me?.tier} />
             <button className="btn ghost sm" onClick={onLogout}><Icon name="logout" size={14} /></button>
           </>
         )}

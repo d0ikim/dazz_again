@@ -17,7 +17,9 @@ export default function KakaoLoginModal({ onClose, onLogin, reason }) {
           처음이면 자동으로 회원가입돼요. 별도 가입 절차는 없습니다.
         </p>
 
-        <button className="btn kakao full lg" onClick={() => onLogin({ name: '게스트', userId: 'u_kakao_' + Math.floor(Math.random() * 90000 + 10000) })}>
+        <button className="btn kakao full lg" onClick={() => {
+          window.location.href = 'http://localhost:8080/oauth2/authorization/kakao';
+        }}>
           <Icon name="chat" size={18} /> 카카오 계정으로 로그인 / 가입
         </button>
 
