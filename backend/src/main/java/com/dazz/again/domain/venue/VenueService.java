@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service; // 이 클래스가 비즈니스 
 import org.springframework.transaction.annotation.Transactional; // DB 작업을 하나의 트랜잭션으로 묶어주는 어노테이션
 
 import java.util.List; // 여러 개의 Venue를 담을 List 타입
+import java.util.NoSuchElementException; // 존재하지 않는 공연장 조회 시 던질 예외
 
 @Service // Spring이 이 클래스를 서비스 빈으로 등록 → Controller에서 주입받아 사용 가능
 @RequiredArgsConstructor // final로 선언된 venueRepository를 받는 생성자를 Lombok이 자동 생성
@@ -26,5 +27,35 @@ public class VenueService {
     // 전체 공연장 목록 반환 — JpaRepository 기본 제공 메서드 사용
     public List<Venue> findAll() {
         return venueRepository.findAll(); // SELECT * FROM venue
+    }
+
+    // ADMIN 전용 — 공연장 등록 — 요청 DTO를 받아 Venue 엔티티로 변환 후 저장
+    @Transactional // DB에 저장하므로 읽기 전용 해제
+    public Venue create(VenueRequest request) {
+        Venue venue = Venue.builder()
+                .name(request.getName())
+                .location(request.getLocation())
+                .instagramUrl(request.getInstagramUrl())
+                .homepageUrl(request.getHomepageUrl())
+                .description(request.getDescription())
+                .build();
+        return venueRepository.save(venue); // INSERT INTO venue ...
+    }
+
+    // ADMIN 전용 — 공연장 수정 — id로 기존 공연장을 찾아 update() 호출
+    @Transactional // DB를 변경하므로 읽기 전용 해제
+    public Venue update(Long id, VenueRequest request) {
+        Venue venue = venueRepository.findById(id)
+                .orElseThrow(() -> new NoSuchElementException("존재하지 않는 공연장입니다. id=" + id));
+
+        // Venue 엔티티의 update() 메서드로 필드 교체 — save() 없이도 트랜잭션 종료 시 자동 반영
+        venue.update(
+                request.getName(),
+                request.getLocation(),
+                request.getInstagramUrl(),
+                request.getHomepageUrl(),
+                request.getDescription()
+        );
+        return venue;
     }
 }

@@ -41,4 +41,13 @@ public class Venue {
 
     @Column                             // NULL 허용 (선택 정보)
     private String description;         // 공연장 메모/설명
+
+    // ADMIN이 공연장 정보를 수정할 때 호출 — 전달받은 값으로 모든 필드를 교체
+    public void update(String name, String location, String instagramUrl, String homepageUrl, String description) {
+        this.name = name;
+        this.location = location;
+        this.instagramUrl = instagramUrl;
+        this.homepageUrl = homepageUrl;
+        this.description = description;
+    }
 }
