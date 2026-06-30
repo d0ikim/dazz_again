@@ -34,11 +34,7 @@
 | `feat/graph-api` | 뮤지션별 공연 목록 API, 뮤지션 인맥지도 API |
 | `feat/auth-api` | 본인 정보 조회/로그아웃 API, 뮤지션 프로필 수정 API, 카카오 로그인 프론트 연동 |
 | `feat/admin-api` | 어드민 인증 관리 API — 대기 목록 조회 / 승인 / 거부 |
-
-### 🔲 남은 작업
-| 브랜치 예정 | 내용 |
-|---|---|
-| `feat/admin-api` | 어드민 공연장 관리 API — 공연장 등록 / 수정 |
+| `feat/admin-api` | 어드민 공연장/공연 관리 API — 공연장 등록·수정 / 공연 등록·수정 |
 | `feat/performance-api` | 공연 단건 조회 API (`GET /api/performances/{id}`) |
 | `feat/performance-api` | 공연 이력 추가 API (`POST /api/performances`, MUSICIAN 전용) |
 | `feat/connect-frontend` | 프론트엔드 ↔ 백엔드 실제 데이터 연결 (mock 데이터 제거) |
@@ -88,6 +84,8 @@
 | PATCH | `/api/admin/verify/{id}/reject` | 뮤지션 인증 거부 | 필요 (ADMIN) |
 | POST | `/api/admin/venues` | 공연장 등록 | 필요 (ADMIN) |
 | PUT | `/api/admin/venues/{id}` | 공연장 수정 | 필요 (ADMIN) |
+| POST | `/api/admin/performances` | 공연 등록 | 필요 (ADMIN) |
+| PUT | `/api/admin/performances/{id}` | 공연 수정 | 필요 (ADMIN) |
 
 ### 인증
 | Method | URL | 설명 | 인증 |

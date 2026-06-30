@@ -57,4 +57,17 @@ public class Performance {
 
     @Column(columnDefinition = "TEXT")
     private String sourceUrl;                              // 출처 URL — NULL 허용 (인스타 포스트 링크)
+
+    // ADMIN이 공연 정보를 수정할 때 호출 — 전달받은 값으로 모든 필드를 교체
+    public void update(Venue venue, LocalDateTime startTime, String title,
+                       String genre, String setInfo, String setList, boolean cancelled, String sourceUrl) {
+        this.venue = venue;
+        this.startTime = startTime;
+        this.title = title;
+        this.genre = genre;
+        this.setInfo = setInfo;
+        this.setList = setList;
+        this.cancelled = cancelled;
+        this.sourceUrl = sourceUrl;
+    }
 }
