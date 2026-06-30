@@ -51,4 +51,14 @@ public class VerificationRequest {
         APPROVED,   // 승인됨 (ADMIN이 승인)
         REJECTED    // 거절됨 (ADMIN이 거절)
     }
+
+    // ADMIN이 승인할 때 호출 — status를 APPROVED로 변경
+    public void approve() {
+        this.status = Status.APPROVED;
+    }
+
+    // ADMIN이 거부할 때 호출 — status를 REJECTED로 변경
+    public void reject() {
+        this.status = Status.REJECTED;
+    }
 }
