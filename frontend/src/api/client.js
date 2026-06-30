@@ -11,7 +11,9 @@ async function request(path, options = {}) {
     },
   });
   if (!res.ok) throw new Error(`${res.status} ${path}`);
-  return res.json();
+  // 응답 body가 없는 경우(로그아웃 등 void 반환)에도 오류 없이 처리
+  const text = await res.text();
+  return text ? JSON.parse(text) : null;
 }
 
 export const api = {
@@ -27,6 +29,9 @@ export const api = {
   createPerformance: (body) => request('/api/performances', { method: 'POST', body: JSON.stringify(body) }),
 
   getMe: () => request('/api/auth/me'),
+  logout: () => request('/api/auth/logout', { method: 'POST' }),
+
+  updateMyProfile: (body) => request('/api/musicians/me', { method: 'PUT', body: JSON.stringify(body) }),
 
   getVerifyQueue: () => request('/api/admin/verify'),
   approveVerify: (id) => request(`/api/admin/verify/${id}/approve`, { method: 'POST' }),

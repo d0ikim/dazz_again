@@ -43,6 +43,35 @@ public class MusicianService {
         return musicianRepository.findByPositionContaining(keyword, ID_ASC);
     }
 
+    // 로그인한 MUSICIAN 유저가 자신의 프로필을 수정하는 메서드
+    // 프로필이 없으면 새로 만들고, 있으면 수정함 (upsert: update + insert)
+    @Transactional // 데이터를 저장/수정하므로 읽기 전용 해제
+    public Musician updateMyProfile(Long userId, MusicianUpdateRequest request) {
+
+        // userId로 기존 뮤지션 프로필 조회
+        // Optional이 비어 있으면(프로필 없음) 빈 프로필 새로 생성, 있으면 기존 객체 사용
+        Musician musician = musicianRepository.findByUserId(userId)
+                .orElse(Musician.builder()          // 프로필이 없으면 새 뮤지션 객체 생성
+                        .stageName("")              // 필수 필드(NOT NULL)이므로 빈 값으로 초기화
+                        .position("")               // 필수 필드(NOT NULL)이므로 빈 값으로 초기화
+                        .sourceType("SELF")         // 뮤지션 본인이 직접 입력했음을 표시
+                        .userId(userId)             // 이 프로필의 주인 유저 ID 연결
+                        .build());
+
+        // 요청에서 받은 값으로 프로필 수정 (null인 필드는 기존 값 유지)
+        musician.updateProfile(
+                request.getStageName(),
+                request.getRealName(),
+                request.getPosition(),
+                request.getBio(),
+                request.getSnsUrl(),
+                request.getProfileImageUrl()
+        );
+
+        // DB에 저장 (새 객체면 INSERT, 기존 객체면 UPDATE)
+        return musicianRepository.save(musician);
+    }
+
     // 인맥지도 데이터 조회 — 중심 뮤지션 + 협연자 목록 + 협연 횟수를 하나의 GraphResponse로 반환
     public GraphResponse getGraph(Long musicianId) {
         // 1. 중심 뮤지션 조회 (없으면 NoSuchElementException → Controller에서 404 처리)

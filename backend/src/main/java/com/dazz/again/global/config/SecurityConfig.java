@@ -7,6 +7,7 @@ import com.dazz.again.global.auth.OAuth2LoginSuccessHandler;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;                  // HTTP 메서드(GET, PUT 등)를 상수로 제공하는 클래스
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -39,8 +40,11 @@ public class SecurityConfig {
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
             // URL별 접근 권한(인가) 설정
+            // 주의: 규칙은 위에서부터 순서대로 평가되므로, 더 구체적인 규칙을 위에 배치해야 함
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/venues/**", "/api/musicians/**", "/api/performances/**").permitAll()    // 공연장/뮤지션/공연 조회는 누구나
+                .requestMatchers(HttpMethod.PUT, "/api/musicians/me").hasAuthority("MUSICIAN")  // 1. 뮤지션 프로필 수정은 MUSICIAN만
+                .requestMatchers("/api/admin/**").hasAuthority("ADMIN")                         // 2. 관리자 API는 ADMIN만
+                .requestMatchers("/api/venues/**", "/api/musicians/**", "/api/performances/**").permitAll()  // 공연장/뮤지션/공연 조회는 누구나
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()   // Swagger 문서는 누구나
                 .requestMatchers("/oauth2/**", "/login/**").permitAll()             // 카카오 로그인 URL은 누구나
                 .anyRequest().authenticated()                                        // 나머지는 로그인 필요

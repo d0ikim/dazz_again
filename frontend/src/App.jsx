@@ -36,6 +36,7 @@ import ScreenAdminVenues from './pages/admin/ScreenAdminVenues';
 import ScreenAdminConcerts from './pages/admin/ScreenAdminConcerts';
 
 import { DATA } from './data/mockData';
+import { api } from './api/client';
 
 const MUSICIAN_ROUTES = new Set(['dashboard', 'profile-edit', 'shows-list', 'albums-list', 'graph-mine', 'resume-public']);
 const ADMIN_ROUTES = new Set(['admin-home', 'admin-verify', 'admin-venues', 'admin-concerts']);
@@ -62,6 +63,39 @@ export default function App() {
     const onPop = () => setRouteState(parseHash());
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
+  }, []);
+
+  // 앱 시작 시: URL에 토큰이 있으면 저장 후 제거, localStorage 토큰으로 로그인 상태 복원
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const urlToken = params.get('token');
+    const isFreshLogin = !!urlToken;
+
+    if (urlToken) {
+      localStorage.setItem('token', urlToken);
+      // URL에서 token 파라미터 제거 (브라우저 히스토리/주소창에 토큰이 노출되지 않도록)
+      window.history.replaceState({}, '', window.location.pathname + window.location.hash);
+    }
+
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    const roleMap = { GENERAL: 'general', MUSICIAN: 'musician', ADMIN: 'admin' };
+
+    api.getMe()
+      .then(user => {
+        const role = roleMap[user.role] || 'guest';
+        setAuth({ role, name: user.nickname, userId: user.id });
+        if (isFreshLogin) {
+          showToast(`${user.nickname}님으로 로그인됐습니다`);
+          if (role === 'admin') navigate('admin-home');
+        }
+      })
+      .catch(() => {
+        // 토큰이 만료됐거나 유효하지 않으면 삭제
+        localStorage.removeItem('token');
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const navigate = (r, params = {}) => {
@@ -104,6 +138,8 @@ export default function App() {
   };
 
   const handleLogout = () => {
+    api.logout().catch(() => {}); // 서버에 로그아웃 알림 (실패해도 클라이언트는 로그아웃 진행)
+    localStorage.removeItem('token');
     setAuth({ role: 'guest' });
     navigate('directory');
     showToast('로그아웃됐습니다', 'ink');
