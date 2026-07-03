@@ -676,6 +676,13 @@ button.pill:hover { opacity: 0.85; }
 .eyebrow { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; color: var(--wine); letter-spacing: 0.12em; text-transform: uppercase; }
 .empty-state { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 56px 0; }
 .empty-state.sm { padding: 28px 0; }
+
+/* 백엔드 미구현 기능 자리를 점선 박스로 표시하는 "준비 중" 플레이스홀더 */
+.coming-soon-box { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 32px 20px; border: 1.5px dashed var(--line); border-radius: 10px; background: var(--paper-2, #faf9f7); }
+.coming-soon-label { font-size: 13px; font-weight: 600; color: var(--mute); }
+.coming-soon-sub { font-size: 12px; color: var(--mute-2, #b0a99f); }
+/* 카드 안에 한 줄로 들어가는 인라인 "준비 중" 표시 */
+.coming-soon-inline { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--mute); }
 .tab-row { display: flex; gap: 4px; border-bottom: 1px solid var(--line); }
 .tab { padding: 8px 16px; font-size: 13px; font-weight: 600; color: var(--mute); background: transparent; border: 0; border-bottom: 2px solid transparent; cursor: pointer; margin-bottom: -1px; }
 .tab.active { color: var(--wine); border-bottom-color: var(--wine); }
