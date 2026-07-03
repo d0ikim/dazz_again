@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.NoSuchElementException;
 
-@Tag(name = "인증 API", description = "로그인 유저 본인 정보 조회")
+@Tag(name = "인증 API", description = "로그인 유저 본인 정보 조회 및 로그아웃")
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
