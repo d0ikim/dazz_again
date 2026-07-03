@@ -1,6 +1,8 @@
 // 공연 관련 비즈니스 로직을 처리하는 파일
 package com.dazz.again.domain.performance;
 
+import com.dazz.again.domain.musician.Musician;                // 뮤지션 엔티티 — 공연 추가 시 본인 뮤지션 프로필 조회에 사용
+import com.dazz.again.domain.musician.MusicianRepository;      // 뮤지션 DB 조회
 import com.dazz.again.domain.venue.Venue;                      // 공연장 엔티티 — 공연 등록/수정 시 공연장 조회에 사용
 import com.dazz.again.domain.venue.VenueRepository;           // 공연장 DB 조회
 import lombok.RequiredArgsConstructor;                         // Lombok: final 필드를 받는 생성자를 자동 생성 (의존성 주입에 사용)
@@ -16,8 +18,10 @@ import java.util.NoSuchElementException; // 존재하지 않는 공연/공연장
 @Transactional(readOnly = true)                                // 이 클래스의 모든 메서드는 기본적으로 읽기 전용 트랜잭션으로 실행 (성능 최적화)
 public class PerformanceService {
 
-    private final PerformanceRepository performanceRepository; // DB 접근을 위한 Repository (생성자로 자동 주입됨)
-    private final VenueRepository venueRepository;            // 공연장 조회용 — venueId로 Venue 엔티티를 가져올 때 사용
+    private final PerformanceRepository performanceRepository;         // DB 접근을 위한 Repository (생성자로 자동 주입됨)
+    private final VenueRepository venueRepository;                    // 공연장 조회용 — venueId로 Venue 엔티티를 가져올 때 사용
+    private final MusicianRepository musicianRepository;               // 뮤지션 조회용 — userId로 본인 Musician 엔티티를 가져올 때 사용
+    private final PerformanceLineupRepository performanceLineupRepository; // 라인업 저장용 — 공연 추가 후 본인을 라인업에 등록할 때 사용
 
     private static final Sort START_TIME_ASC = Sort.by("startTime").ascending(); // 모든 조회에 공통으로 쓸 공연시작시간 오름차순 정렬 조건
 
@@ -36,9 +40,53 @@ public class PerformanceService {
         return performanceRepository.findByGenreContaining(keyword, START_TIME_ASC);
     }
 
+    // 공연 단건 조회 — id로 공연 1건을 DB에서 찾아 반환, 없으면 예외 발생
+    public Performance findById(Long id) {
+        return performanceRepository.findById(id)
+                .orElseThrow(() -> new NoSuchElementException("존재하지 않는 공연입니다. id=" + id));
+    }
+
     // 특정 뮤지션이 출연한 공연 목록 (공연시작시간 오름차순)
     public List<Performance> findByMusicianId(Long musicianId) {
         return performanceRepository.findByMusicianId(musicianId);
+    }
+
+    // MUSICIAN 전용 — 본인 공연 이력 추가
+    // 1) userId로 내 뮤지션 프로필 조회 → 2) 공연 저장 → 3) 라인업에 본인 등록
+    @Transactional // DB에 저장하므로 읽기 전용 해제
+    public Performance addByMusician(Long userId, PerformanceRequest request) {
+        // 1단계: JWT에서 꺼낸 userId로 내 뮤지션 프로필을 DB에서 조회
+        //        뮤지션 프로필이 없는 유저(관리자가 승인 전 등)는 예외 발생
+        Musician musician = musicianRepository.findByUserId(userId)
+                .orElseThrow(() -> new NoSuchElementException("뮤지션 프로필이 존재하지 않습니다."));
+
+        // 2단계: 요청의 venueId로 공연장 조회
+        Venue venue = venueRepository.findById(request.getVenueId())
+                .orElseThrow(() -> new NoSuchElementException("존재하지 않는 공연장입니다. id=" + request.getVenueId()));
+
+        // 3단계: Performance 엔티티 생성 후 저장 — save() 호출로 DB에 INSERT, id가 채워진 객체 반환
+        Performance performance = Performance.builder()
+                .venue(venue)
+                .startTime(request.getStartTime())
+                .title(request.getTitle())
+                .genre(request.getGenre())
+                .setInfo(request.getSetInfo())
+                .setList(request.getSetList())
+                .cancelled(request.isCancelled())
+                .sourceUrl(request.getSourceUrl())
+                .build();
+        performanceRepository.save(performance); // 여기서 performance.id가 채워짐
+
+        // 4단계: 방금 저장한 공연에 본인을 라인업으로 등록
+        //        PerformanceLineupId(공연id, 뮤지션id)로 복합키 구성
+        PerformanceLineup lineup = PerformanceLineup.builder()
+                .id(new PerformanceLineupId(performance.getId(), musician.getId())) // 복합키 생성
+                .performance(performance)  // 방금 저장한 공연 객체
+                .musician(musician)        // 내 뮤지션 프로필 객체
+                .build();
+        performanceLineupRepository.save(lineup); // performance_lineup 테이블에 INSERT
+
+        return performance; // 저장된 공연 정보 반환
     }
 
     // ADMIN 전용 — 공연 등록 — 요청 DTO의 venueId로 공연장을 조회한 뒤 Performance 엔티티로 변환 후 저장

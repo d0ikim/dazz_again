@@ -42,8 +42,9 @@ public class SecurityConfig {
             // URL별 접근 권한(인가) 설정
             // 주의: 규칙은 위에서부터 순서대로 평가되므로, 더 구체적인 규칙을 위에 배치해야 함
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers(HttpMethod.PUT, "/api/musicians/me").hasAuthority("MUSICIAN")  // 1. 뮤지션 프로필 수정은 MUSICIAN만
-                .requestMatchers("/api/admin/**").hasAuthority("ADMIN")                         // 2. 관리자 API는 ADMIN만
+                .requestMatchers(HttpMethod.PUT, "/api/musicians/me").hasAuthority("MUSICIAN")   // 1. 뮤지션 프로필 수정은 MUSICIAN만
+                .requestMatchers(HttpMethod.POST, "/api/performances").hasAuthority("MUSICIAN")  // 2. 뮤지션 본인 공연 이력 추가는 MUSICIAN만
+                .requestMatchers("/api/admin/**").hasAuthority("ADMIN")                          // 3. 관리자 API는 ADMIN만
                 .requestMatchers("/api/venues/**", "/api/musicians/**", "/api/performances/**").permitAll()  // 공연장/뮤지션/공연 조회는 누구나
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()   // Swagger 문서는 누구나
                 .requestMatchers("/oauth2/**", "/login/**").permitAll()             // 카카오 로그인 URL은 누구나
