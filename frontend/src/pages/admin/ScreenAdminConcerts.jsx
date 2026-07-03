@@ -1,5 +1,5 @@
 // 어드민 — 공연 관리 페이지
-// 전체 공연 목록을 예정/종료 탭으로 나눠 보여주고 취소 처리하는 화면
+// 전체 공연 목록을 예정/종료 탭으로 나눠 보여주고 등록/취소 처리하는 화면
 import { useState, useEffect } from 'react'; // useState: 상태 관리 / useEffect: 마운트 시 API 호출
 import Icon from '../../components/Icon';     // 아이콘 컴포넌트
 import { api } from '../../api/client';       // 백엔드 API 호출 함수 모음
@@ -16,31 +16,61 @@ function isUpcoming(p) {
   return new Date(p.startTime) > new Date();
 }
 
+// 빈 등록 폼 초기값
+const EMPTY_FORM = { venueId: '', date: '', time: '20:00', title: '', genre: '', setInfo: '', sourceUrl: '' };
+
 export default function ScreenAdminConcerts({ navigate, onToast }) {
-  // performances: 백엔드에서 받아온 전체 공연 목록
   const [performances, setPerformances] = useState([]);
-
-  // loading: API 응답 대기 중 여부
   const [loading, setLoading] = useState(true);
-
-  // tab: 현재 선택된 탭 ('upcoming' = 예정 / 'past' = 종료)
   const [tab, setTab] = useState('upcoming');
 
-  // 마운트 시 전체 공연 목록 로드
+  // venues: 공연장 드롭다운에 표시할 목록
+  const [venues, setVenues] = useState([]);
+
+  // adding: true이면 등록 폼 행 표시
+  const [adding, setAdding] = useState(false);
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [saving, setSaving] = useState(false);
+
+  // query: 공연명 검색어 (실시간 필터링)
+  const [query, setQuery] = useState('');
+
   useEffect(() => {
-    api.getPerformances()
-      .then((data) => setPerformances(data))
-      .catch(() => onToast && onToast('공연 목록 조회 실패', 'ink'))
+    // 공연 목록과 공연장 목록을 병렬로 로드
+    Promise.all([api.getPerformances(), api.getVenues()])
+      .then(([perfs, vs]) => { setPerformances(perfs); setVenues(vs); })
+      .catch(() => onToast && onToast('목록 조회 실패', 'ink'))
       .finally(() => setLoading(false));
   }, []);
 
-  // 탭에 따라 공연 필터링
-  const list = performances.filter((p) =>
-    tab === 'upcoming' ? isUpcoming(p) : !isUpcoming(p)
-  );
+  const setField = (k, v) => setForm((p) => ({ ...p, [k]: v }));
 
-  // 공연 취소 처리 — PUT /api/admin/performances/{id} (cancelled: true)
-  // 취소는 공연의 모든 기존 데이터를 유지한 채 cancelled 필드만 true로 변경
+  // 공연 등록 — POST /api/admin/performances
+  const save = () => {
+    if (!form.venueId || !form.date || !form.title) return;
+    setSaving(true);
+    const body = {
+      venueId: Number(form.venueId),
+      startTime: `${form.date}T${form.time}:00`, // "2026-05-18T20:00:00" 형식
+      title: form.title,
+      genre: form.genre || null,
+      setInfo: form.setInfo || null,
+      setList: null,
+      sourceUrl: form.sourceUrl || null,
+      cancelled: false,
+    };
+    api.createAdminPerformance(body)           // POST /api/admin/performances
+      .then((created) => {
+        setPerformances((prev) => [created, ...prev]); // 목록 맨 앞에 추가
+        setAdding(false);
+        setForm(EMPTY_FORM);
+        onToast && onToast('공연이 등록됐습니다');
+      })
+      .catch(() => onToast && onToast('공연 등록 실패', 'ink'))
+      .finally(() => setSaving(false));
+  };
+
+  // 공연 취소 — PUT /api/admin/performances/{id} (cancelled: true)
   const cancel = (p) => {
     const body = {
       venueId: p.venue?.id,
@@ -49,12 +79,11 @@ export default function ScreenAdminConcerts({ navigate, onToast }) {
       genre: p.genre || null,
       setInfo: p.setInfo || null,
       setList: p.setList || null,
-      cancelled: true,                // 취소 처리
+      cancelled: true,
       sourceUrl: p.sourceUrl || null,
     };
     api.updateAdminPerformance(p.id, body)
       .then((updated) => {
-        // 성공: 로컬 목록에서 해당 항목을 최신 값으로 교체
         setPerformances((prev) => prev.map((x) => x.id === p.id ? updated : x));
         onToast && onToast('공연이 취소 처리됐습니다');
       })
@@ -62,22 +91,83 @@ export default function ScreenAdminConcerts({ navigate, onToast }) {
   };
 
   if (loading) {
-    return (
-      <div className="main dashboard-main">
-        <div className="pad"><p className="muted">공연 목록을 불러오는 중...</p></div>
-      </div>
-    );
+    return <div className="main dashboard-main"><div className="pad"><p className="muted">불러오는 중...</p></div></div>;
   }
+
+  // tab + 검색어로 공연 필터링
+  const list = performances.filter((p) => {
+    const matchTab = tab === 'upcoming' ? isUpcoming(p) : !isUpcoming(p); // 탭 필터 만족 여부
+    const matchQuery = query === '' || p.title.toLowerCase().includes(query.toLowerCase()); // 공연명 검색 만족 여부
+    return matchTab && matchQuery; // 둘 다 만족하면 표시
+  });
+  const canSave = form.venueId && form.date && form.title;
 
   return (
     <div className="main dashboard-main">
       <div className="pad">
         <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <h1 className="h2 serif" style={{ margin: 0 }}>공연 관리 ({performances.length})</h1>
-          {/* 공연 등록 버튼 — 별도 모달 구현 예정 */}
-          <button className="btn primary sm" disabled style={{ opacity: 0.5 }}>
-            <Icon name="plus" size={14} /> 공연 등록 준비 중
+          <button className="btn primary sm" onClick={() => { setAdding(true); setTab('upcoming'); }}>
+            <Icon name="plus" size={14} /> 공연 등록
           </button>
+        </div>
+
+        {/* 공연 등록 폼 — adding이 true일 때만 표시 */}
+        {adding && (
+          <div className="card" style={{ marginBottom: 18, padding: '16px 20px' }}>
+            <div className="form-grid">
+              <div className="field" style={{ gridColumn: '1 / -1' }}>
+                <label className="label">공연명 *</label>
+                <input type="text" placeholder="예: 김재즈 트리오 정기공연" value={form.title} onChange={(e) => setField('title', e.target.value)} />
+              </div>
+              <div className="field" style={{ gridColumn: '1 / -1' }}>
+                <label className="label">공연장 *</label>
+                <select value={form.venueId} onChange={(e) => setField('venueId', e.target.value)}>
+                  <option value="">공연장 선택</option>
+                  {venues.map((v) => <option key={v.id} value={v.id}>{v.name} — {v.location}</option>)}
+                </select>
+              </div>
+              <div className="field">
+                <label className="label">날짜 *</label>
+                <input type="date" value={form.date} onChange={(e) => setField('date', e.target.value)} />
+              </div>
+              <div className="field">
+                <label className="label">시작 시간</label>
+                <input type="time" value={form.time} onChange={(e) => setField('time', e.target.value)} />
+              </div>
+              <div className="field">
+                <label className="label">장르</label>
+                <input type="text" placeholder="JAZZ" value={form.genre} onChange={(e) => setField('genre', e.target.value)} />
+              </div>
+              <div className="field">
+                <label className="label">세트 정보</label>
+                <input type="text" placeholder="1부 20:00~20:40" value={form.setInfo} onChange={(e) => setField('setInfo', e.target.value)} />
+              </div>
+              <div className="field" style={{ gridColumn: '1 / -1' }}>
+                <label className="label">출처 링크</label>
+                <input type="url" placeholder="인스타 포스트 URL 등" value={form.sourceUrl} onChange={(e) => setField('sourceUrl', e.target.value)} />
+              </div>
+            </div>
+            <div className="row" style={{ justifyContent: 'flex-end', gap: 8, marginTop: 12 }}>
+              <button className="btn ghost sm" onClick={() => { setAdding(false); setForm(EMPTY_FORM); }}>취소</button>
+              <button className="btn primary sm" disabled={!canSave || saving} onClick={save}>
+                {saving ? '등록 중...' : '등록'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* 공연명 검색 */}
+        <div className="field" style={{ marginBottom: 16, width: 'auto' }}>
+          <div className="prefix">
+            <span><Icon name="search" size={14} /></span>
+            <input
+              type="text"
+              placeholder="공연명 검색"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)} // 입력값 변경 시 실시간 필터링
+            />
+          </div>
         </div>
 
         {/* 예정/종료 탭 */}
@@ -95,9 +185,9 @@ export default function ScreenAdminConcerts({ navigate, onToast }) {
             <thead>
               <tr>
                 <th>공연명</th>
-                <th>날짜·시간</th>  {/* startTime에서 추출 */}
-                <th>공연장</th>     {/* p.venue.name (중첩 객체) */}
-                <th>장르</th>       {/* p.genre */}
+                <th>날짜·시간</th>
+                <th>공연장</th>
+                <th>장르</th>
                 <th>상태</th>
                 <th></th>
               </tr>
@@ -105,12 +195,8 @@ export default function ScreenAdminConcerts({ navigate, onToast }) {
             <tbody>
               {list.map((p) => (
                 <tr key={p.id}>
-                  <td>
-                    <b style={{ fontSize: 13 }}>{p.title}</b>
-                  </td>
-                  {/* startTime: "2026-05-18T20:00:00" → "2026-05-18 20:00" */}
+                  <td><b style={{ fontSize: 13 }}>{p.title}</b></td>
                   <td className="mono" style={{ fontSize: 12 }}>{fmtDateTime(p.startTime)}</td>
-                  {/* p.venue: 백엔드가 중첩 객체로 반환 */}
                   <td className="muted">{p.venue?.name}</td>
                   <td className="muted">{p.genre || '—'}</td>
                   <td>
@@ -123,11 +209,9 @@ export default function ScreenAdminConcerts({ navigate, onToast }) {
                   </td>
                   <td>
                     <div className="row" style={{ gap: 6 }}>
-                      {/* 상세 보기 버튼 — concert-detail 페이지로 이동 */}
                       <button className="btn ghost sm" onClick={() => navigate('concert-detail', { concertId: p.id })}>
                         <Icon name="external" size={13} />
                       </button>
-                      {/* 취소 버튼 — 예정 공연이고 아직 취소되지 않은 경우만 표시 */}
                       {isUpcoming(p) && !p.cancelled && (
                         <button className="btn ghost sm" onClick={() => cancel(p)}>
                           <Icon name="x" size={13} />
@@ -139,7 +223,6 @@ export default function ScreenAdminConcerts({ navigate, onToast }) {
               ))}
             </tbody>
           </table>
-
           {list.length === 0 && (
             <div className="empty-state sm">
               <p className="muted">{tab === 'upcoming' ? '예정 공연 없음' : '지난 공연 없음'}</p>

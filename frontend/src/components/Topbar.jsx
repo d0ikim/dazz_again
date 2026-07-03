@@ -3,7 +3,7 @@ import Avatar from './Avatar';
 import Icon from './Icon';
 
 export default function Topbar({ route, navigate, mode = 'visitor', me, auth = { role: 'guest' }, onLoginClick, onLogout }) {
-  const publicNav = mode === 'visitor' || mode === 'general';
+  const publicNav = true; // 모든 역할에서 공연장/공연/인맥지도 nav 표시
   return (
     <div className="topbar">
       <div className="row" style={{ gap: 32 }}>
@@ -48,14 +48,18 @@ export default function Topbar({ route, navigate, mode = 'visitor', me, auth = {
         ) : auth.role === 'admin' ? (
           <>
             <span className="pill ink-solid"><Icon name="shield" size={13} /> ADMIN</span>
+            <button className="btn primary sm" onClick={() => navigate('admin-home')}>관리자 대시보드</button>
             <button className="btn ghost sm" onClick={() => navigate('directory')}><Icon name="external" size={14} /> 사이트 보기</button>
             <Avatar name="관" ink />
             <button className="btn ghost sm" onClick={onLogout}><Icon name="logout" size={14} /></button>
           </>
         ) : (
           <>
+            <button className="btn primary sm" onClick={() => navigate('dashboard')}>
+              마이페이지
+            </button>
             <button className="btn ghost sm" onClick={() => navigate('profile-public')}>
-              <Icon name="external" size={14} /> 공개 프로필 보기
+              <Icon name="external" size={14} /> 공개 프로필
             </button>
             <Avatar name={auth.name || me?.name || ''} tier={me?.tier} />
             <button className="btn ghost sm" onClick={onLogout}><Icon name="logout" size={14} /></button>
