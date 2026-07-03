@@ -1,29 +1,55 @@
-import Icon from '../../components/Icon';
-import { findMusician } from '../../data/mockData';
+// 공연 이력 한 줄 컴포넌트 — 공연 목록/프로필/대시보드에서 공통으로 사용
+// show: 백엔드 Performance 객체 { id, startTime, title, venue, genre, cancelled }
+import Icon from '../../components/Icon'; // 아이콘 컴포넌트
 
-export default function ShowRow({ show, meUuid, navigate }) {
-  const lineup = (show.lineup || []).map(findMusician);
-  const isLeader = show.role === 'Leader';
+export default function ShowRow({ show, navigate }) {
+  // startTime: "2026-05-18T20:00:00" 형식의 ISO 문자열
+  const dt = show.startTime ? new Date(show.startTime) : null;
+
+  // 월 표시: 예) 5
+  const month = dt ? dt.getMonth() + 1 : '';
+
+  // 일 표시: 예) 18
+  const day = dt ? dt.getDate() : '';
+
   return (
-    <div className="show-row">
+    <div
+      className="show-row"
+      style={{ cursor: navigate ? 'pointer' : 'default' }}
+      onClick={() => navigate && navigate('concert-detail', { concertId: show.id })}
+    >
+      {/* 날짜 표시 영역 */}
       <div className="sd">
-        <span className="sm">{show.date?.slice(5, 7) || ''}</span>
-        <span className="sdy">{show.date?.slice(8, 10) || ''}</span>
+        <span className="sm">{month}</span>   {/* 월 */}
+        <span className="sdy">{day}</span>    {/* 일 */}
       </div>
+
       <div className="col grow" style={{ gap: 3 }}>
-        <div className="row" style={{ gap: 8, alignItems: 'center' }}>
-          <span className={`pill ${isLeader ? 'wine' : 'light'}`} style={{ fontSize: 10 }}>{show.role}</span>
-          <b style={{ fontSize: 14 }}>{show.venue}</b>
-          {show.city ? <span className="muted" style={{ fontSize: 12 }}>— {show.city}</span> : null}
-        </div>
-        <div className="lineup">
-          {lineup.map((m) => (
-            <a key={m.uuid} className={`lm ${m.uuid === meUuid ? 'me' : ''}`} onClick={() => navigate && navigate('profile-public', { uuid: m.uuid })}>
-              {m.name}
-            </a>
-          ))}
+        {/* 공연명 */}
+        <b style={{ fontSize: 14 }}>{show.title}</b>
+
+        <div className="row" style={{ gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* 공연장명 — venue는 백엔드가 중첩 객체로 반환 */}
+          {show.venue?.name && (
+            <span className="muted" style={{ fontSize: 12 }}>
+              <Icon name="building" size={11} /> {show.venue.name}
+            </span>
+          )}
+
+          {/* 장르 — 값이 있을 때만 표시 */}
+          {show.genre && (
+            <span className="pill light" style={{ fontSize: 10 }}>{show.genre}</span>
+          )}
+
+          {/* 취소된 공연 표시 */}
+          {show.cancelled && (
+            <span className="pill light" style={{ fontSize: 10 }}>취소</span>
+          )}
         </div>
       </div>
+
+      {/* 상세 페이지 이동 화살표 */}
+      {navigate && <Icon name="arrow-right" size={14} color="var(--mute)" />}
     </div>
   );
 }

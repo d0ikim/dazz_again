@@ -35,8 +35,7 @@ import ScreenAdminVerify from './pages/admin/ScreenAdminVerify';
 import ScreenAdminVenues from './pages/admin/ScreenAdminVenues';
 import ScreenAdminConcerts from './pages/admin/ScreenAdminConcerts';
 
-import { DATA } from './data/mockData';
-import { api } from './api/client';
+import { api } from './api/client'; // mock 데이터 제거 — 실제 API 사용
 
 const MUSICIAN_ROUTES = new Set(['dashboard', 'profile-edit', 'shows-list', 'albums-list', 'graph-mine', 'resume-public']);
 const ADMIN_ROUTES = new Set(['admin-home', 'admin-verify', 'admin-venues', 'admin-concerts']);
@@ -54,7 +53,9 @@ export default function App() {
   const [toast, setToast] = useState(null);
   const [loginModal, setLoginModal] = useState(false);
   const [loginReason, setLoginReason] = useState(null);
-  const [me, setMe] = useState(DATA.me);
+  // me: 로그인한 유저 정보 (null = 비로그인 or 아직 로드 중)
+  // 로그인 후: { id, nickname, role, musicianId?, stageName?, position?, bio?, snsUrl? }
+  const [me, setMe] = useState(null);
 
   const route = routeState.route;
   const routeParams = routeState.params;
@@ -86,6 +87,25 @@ export default function App() {
       .then(user => {
         const role = roleMap[user.role] || 'guest';
         setAuth({ role, name: user.nickname, userId: user.id });
+
+        if (role === 'musician') {
+          // MUSICIAN이면 전체 뮤지션 목록에서 userId가 일치하는 프로필을 찾아 me에 합침
+          // (GET /api/musicians/me 엔드포인트가 없으므로 목록에서 검색)
+          api.getMusicians().then(musicians => {
+            const myProfile = musicians.find(m => m.userId === user.id);
+            setMe({
+              ...user,
+              musicianId: myProfile?.id,       // 뮤지션 프로필의 DB id
+              stageName: myProfile?.stageName, // 활동명
+              position: myProfile?.position,   // 악기
+              bio: myProfile?.bio,
+              snsUrl: myProfile?.snsUrl,
+            });
+          }).catch(() => setMe(user)); // 뮤지션 조회 실패해도 기본 유저 정보는 유지
+        } else {
+          setMe(user); // GENERAL / ADMIN은 유저 정보만 저장
+        }
+
         if (isFreshLogin) {
           showToast(`${user.nickname}님으로 로그인됐습니다`);
           if (role === 'admin') navigate('admin-home');
@@ -169,12 +189,15 @@ export default function App() {
 
     switch (route) {
       case 'directory': return <ScreenDirectory navigate={navigate} auth={auth} onLoginClick={openLogin} />;
-      case 'profile-public': return <ScreenPublicProfile uuid={routeParams.uuid || DATA.me.uuid} navigate={navigate} auth={auth} />;
+      // uuid 파라미터: 뮤지션의 숫자형 DB id (ScreenDirectory 등에서 navigate 시 전달)
+      case 'profile-public': return <ScreenPublicProfile uuid={routeParams.uuid} navigate={navigate} auth={auth} />;
       case 'venues': return <ScreenVenues navigate={navigate} />;
       case 'concerts': return <ScreenConcerts navigate={navigate} />;
       case 'concert-detail': return <ScreenConcertDetail concertId={routeParams.concertId} navigate={navigate} />;
+      // playdb: 인맥지도 — uuid는 뮤지션의 숫자형 DB id (없으면 선택 화면)
       case 'playdb': return <ScreenPlayDB uuid={routeParams.uuid} navigate={navigate} />;
-      case 'resume-public': return <ScreenResumePublic navigate={navigate} />;
+      // me를 전달해 실제 뮤지션 이름/포지션을 이력서에 표시
+      case 'resume-public': return <ScreenResumePublic navigate={navigate} me={me} />;
 
       case 'become-musician': return <ScreenBecomeMusician navigate={navigate} auth={auth} />;
       case 'claim-existing': return <ScreenClaimExisting navigate={navigate} onSubmitRequest={handleVerifyRequest} />;
@@ -183,9 +206,11 @@ export default function App() {
 
       case 'dashboard': return <ScreenDashboard navigate={navigate} me={me} />;
       case 'profile-edit': return <ScreenProfileEdit me={me} navigate={navigate} onUpdate={(f) => setMe((p) => ({ ...p, ...f }))} onToast={showToast} />;
-      case 'shows-list': return <ScreenShowsList navigate={navigate} onToast={showToast} />;
-      case 'albums-list': return <ScreenShowsList navigate={navigate} onToast={showToast} />;
-      case 'graph-mine': return <ScreenPlayDB uuid={DATA.me.uuid} navigate={navigate} />;
+      // me를 전달해야 musicianId로 API 호출 가능
+      case 'shows-list': return <ScreenShowsList navigate={navigate} onToast={showToast} me={me} />;
+      case 'albums-list': return <ScreenShowsList navigate={navigate} onToast={showToast} me={me} />;
+      // graph-mine: 내 인맥지도 — me.musicianId로 그래프 조회
+      case 'graph-mine': return <ScreenPlayDB uuid={me?.musicianId} navigate={navigate} />;
 
       case 'admin-home': return <ScreenAdminHome navigate={navigate} />;
       case 'admin-verify': return <ScreenAdminVerify navigate={navigate} onToast={showToast} />;

@@ -1,14 +1,40 @@
-import Icon from '../../components/Icon';
-import { DATA } from '../../data/mockData';
+// 관리자 대시보드 메인 화면 — 플랫폼 현황 통계와 최근 인증 요청을 한눈에 표시
+import { useState, useEffect } from 'react'; // useState: 상태 / useEffect: 마운트 시 API 호출
+import Icon from '../../components/Icon';    // 아이콘
+import { api } from '../../api/client';     // 백엔드 API 호출 함수 모음
 
 export default function ScreenAdminHome({ navigate }) {
-  const pending = DATA.verifyQueue.filter((r) => r.status === 'PENDING');
+  // 각 카운트 상태 — null이면 로딩 중, 숫자면 완료
+  const [pendingList, setPendingList] = useState([]);     // 인증 대기 목록 (전체 표시용)
+  const [musicianCount, setMusicianCount] = useState(null);
+  const [venueCount, setVenueCount] = useState(null);
+  const [concertCount, setConcertCount] = useState(null);
+  const [loading, setLoading] = useState(true);
 
+  useEffect(() => {
+    // 네 API를 병렬로 호출해 통계 업데이트
+    Promise.all([
+      api.getVerifyQueue(),    // GET /api/admin/verify/pending → PENDING 인증 요청 목록
+      api.getMusicians(),      // GET /api/musicians → 뮤지션 전체 목록
+      api.getVenues(),         // GET /api/venues → 공연장 전체 목록
+      api.getPerformances(),   // GET /api/performances → 공연 전체 목록
+    ])
+      .then(([pending, musicians, venues, concerts]) => {
+        setPendingList(pending);
+        setMusicianCount(musicians.length);
+        setVenueCount(venues.length);
+        setConcertCount(concerts.length);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  // 통계 카드 데이터 — 실제 API 카운트 기반
   const stats = [
-    { label: '등록 뮤지션', val: DATA.musicians.length, icon: 'users', route: 'directory' },
-    { label: '인증 대기', val: pending.length, icon: 'shield', route: 'admin-verify', alert: pending.length > 0 },
-    { label: '공연장', val: DATA.venues.length, icon: 'building', route: 'admin-venues' },
-    { label: '등록 공연', val: DATA.concerts.length, icon: 'ticket', route: 'admin-concerts' },
+    { label: '등록 뮤지션', val: loading ? '—' : musicianCount, icon: 'users', route: 'directory', alert: false },
+    { label: '인증 대기', val: loading ? '—' : pendingList.length, icon: 'shield', route: 'admin-verify', alert: pendingList.length > 0 },
+    { label: '공연장', val: loading ? '—' : venueCount, icon: 'building', route: 'admin-venues', alert: false },
+    { label: '등록 공연', val: loading ? '—' : concertCount, icon: 'ticket', route: 'admin-concerts', alert: false },
   ];
 
   return (
@@ -17,16 +43,18 @@ export default function ScreenAdminHome({ navigate }) {
         <h1 className="h2 serif" style={{ marginBottom: 6 }}>관리자 대시보드</h1>
         <p className="muted" style={{ marginBottom: 20 }}>DAZZ 플랫폼 현황을 한눈에 확인하세요.</p>
 
-        {pending.length > 0 && (
+        {/* 인증 대기 건수가 있을 때 알림 배너 표시 */}
+        {pendingList.length > 0 && (
           <div className="banner alert" style={{ marginBottom: 20 }}>
             <Icon name="shield" size={16} color="var(--wine)" />
             <span className="grow" style={{ fontSize: 13 }}>
-              <b>{pending.length}건</b>의 뮤지션 인증 요청이 대기 중입니다.
+              <b>{pendingList.length}건</b>의 뮤지션 인증 요청이 대기 중입니다.
             </span>
             <button className="btn primary sm" onClick={() => navigate('admin-verify')}>검토하기</button>
           </div>
         )}
 
+        {/* 통계 카드 그리드 */}
         <div className="admin-stat-grid">
           {stats.map((s) => (
             <div key={s.label} className={`admin-stat-card ${s.alert ? 'alert' : ''}`} onClick={() => navigate(s.route)}>
@@ -39,22 +67,28 @@ export default function ScreenAdminHome({ navigate }) {
           ))}
         </div>
 
+        {/* 최근 인증 요청 목록 — getVerifyQueue는 PENDING만 반환 */}
         <section style={{ marginTop: 28 }}>
           <h3 className="section-label">최근 인증 요청</h3>
           <div className="card flush">
-            {DATA.verifyQueue.slice(0, 3).map((r) => (
+            {pendingList.length > 0 ? pendingList.slice(0, 3).map((r) => (
               <div key={r.id} className="verify-row" onClick={() => navigate('admin-verify')}>
                 <div className="col grow" style={{ gap: 2 }}>
                   <div className="row" style={{ gap: 8 }}>
-                    <b style={{ fontSize: 14 }}>{r.name}</b>
-                    <span className={`pill ${r.status === 'PENDING' ? 'wine' : r.status === 'APPROVED' ? 'green' : 'light'} sm`}>{r.status}</span>
-                    <span className="pill light sm">{r.kind}</span>
+                    {/* userNickname: 백엔드 VerifyRequestResponse 필드명 */}
+                    <b style={{ fontSize: 14 }}>{r.userNickname}</b>
+                    <span className="pill wine sm">PENDING</span>
                   </div>
-                  <span className="muted" style={{ fontSize: 12 }}>{r.instrument} · {r.requestedAt}</span>
+                  {/* requestedAt: "2026-05-18T20:00:00" 형식의 ISO 문자열 */}
+                  <span className="muted" style={{ fontSize: 12 }}>{r.requestedAt?.slice(0, 10)}</span>
                 </div>
                 <Icon name="arrow-right" size={14} color="var(--mute)" />
               </div>
-            ))}
+            )) : (
+              <div className="empty-state sm">
+                <p className="muted">{loading ? '불러오는 중...' : '대기 중인 인증 요청이 없습니다'}</p>
+              </div>
+            )}
           </div>
         </section>
       </div>
