@@ -47,18 +47,18 @@
 | Method | URL | 설명 | 인증 | 프론트 |
 |---|---|---|---|---|
 | GET | `/api/venues` | 전체 공연장 목록 | 불필요 | ✓ |
-| GET | `/api/venues/search?type=name&keyword=` | 이름 검색 | 불필요 | - |
-| GET | `/api/venues/search?type=location&keyword=` | 위치 검색 | 불필요 | - |
+| GET | `/api/venues/search?type=name&keyword=` | 이름 검색 | 불필요 | ✓ |
+| GET | `/api/venues/search?type=location&keyword=` | 위치 검색 (구별 필터) | 불필요 | ✓ |
 | POST | `/api/admin/venues` | 공연장 등록 | 필요 (ADMIN) | ✓ |
-| PUT | `/api/admin/venues/{id}` | 공연장 수정 | 필요 (ADMIN) | - |
+| PUT | `/api/admin/venues/{id}` | 공연장 수정 | 필요 (ADMIN) | ✓ |
 
 ### 뮤지션
 | Method | URL | 설명 | 인증 | 프론트 |
 |---|---|---|---|---|
 | GET | `/api/musicians` | 전체 뮤지션 목록 | 불필요 | ✓ |
 | GET | `/api/musicians/{id}` | 뮤지션 단건 조회 | 불필요 | ✓ |
-| GET | `/api/musicians/search?type=stageName&keyword=` | 활동명 검색 | 불필요 | - |
-| GET | `/api/musicians/search?type=position&keyword=` | 악기 검색 | 불필요 | - |
+| GET | `/api/musicians/search?type=stageName&keyword=` | 활동명 검색 | 불필요 | ✓ |
+| GET | `/api/musicians/search?type=position&keyword=` | 악기 검색 (필터 버튼) | 불필요 | ✓ |
 | GET | `/api/musicians/{id}/graph` | 뮤지션 인맥지도 조회 | 불필요 | ✓ |
 | PUT | `/api/musicians/me` | 내 뮤지션 프로필 수정 | 필요 (MUSICIAN) | ✓ |
 
@@ -73,12 +73,12 @@
 |---|---|---|---|---|
 | GET | `/api/performances` | 전체 공연 목록 | 불필요 | ✓ |
 | GET | `/api/performances/{id}` | 공연 단건 조회 | 불필요 | ✓ |
-| GET | `/api/performances/search?type=title&keyword=` | 공연명 검색 | 불필요 | - |
+| GET | `/api/performances/search?type=title&keyword=` | 공연명 검색 | 불필요 | ✓ |
 | GET | `/api/performances/search?type=genre&keyword=` | 장르 검색 | 불필요 | - |
 | GET | `/api/performances/musician/{id}` | 특정 뮤지션의 공연 목록 | 불필요 | ✓ |
 | POST | `/api/performances` | 공연 이력 추가 | 필요 (MUSICIAN) | ✓ |
 | POST | `/api/admin/performances` | 공연 등록 | 필요 (ADMIN) | ✓ |
-| PUT | `/api/admin/performances/{id}` | 공연 수정 | 필요 (ADMIN) | ✓ |
+| PUT | `/api/admin/performances/{id}` | 공연 수정 (취소/복구) | 필요 (ADMIN) | ✓ |
 
 ### 어드민
 | Method | URL | 설명 | 인증 | 프론트 |

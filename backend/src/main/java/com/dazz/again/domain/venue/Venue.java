@@ -14,7 +14,7 @@ import lombok.Builder;              // Lombok: 빌더 패턴으로 객체를 생
 import lombok.Getter;               // Lombok: 모든 필드의 getter 메서드를 자동 생성
 import lombok.NoArgsConstructor;    // Lombok: 파라미터 없는 기본 생성자를 자동 생성 (JPA 필수)
 
-@JsonPropertyOrder({"id", "name", "location", "instagramUrl", "homepageUrl", "description"})
+@JsonPropertyOrder({"id", "name", "location", "latitude", "longitude", "instagramUrl", "homepageUrl", "description"})
 @Entity                             // JPA에게 "이 클래스는 DB 테이블이야"라고 알림
 @Table(name = "venue")              // 연결할 테이블 이름을 "venue"로 지정
 @Getter                             // id, name 등 모든 필드에 대해 getXxx() 메서드 자동 생성
@@ -41,6 +41,12 @@ public class Venue {
 
     @Column                             // NULL 허용 (선택 정보)
     private String description;         // 공연장 메모/설명
+
+    @Column                             // NULL 허용 (지도 표시용 좌표)
+    private Double latitude;            // 위도 (예: 37.5642)
+
+    @Column                             // NULL 허용
+    private Double longitude;           // 경도 (예: 126.9887)
 
     // ADMIN이 공연장 정보를 수정할 때 호출 — 전달받은 값으로 모든 필드를 교체
     public void update(String name, String location, String instagramUrl, String homepageUrl, String description) {
