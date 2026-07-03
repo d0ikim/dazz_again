@@ -70,7 +70,7 @@ export default function ScreenAdminConcerts({ navigate, onToast }) {
       .finally(() => setSaving(false));
   };
 
-  // 공연 취소 — PUT /api/admin/performances/{id} (cancelled: true)
+  // 공연 취소 — PUT /api/admin/performances/{id} (cancelled: true로 마킹)
   const cancel = (p) => {
     const body = {
       venueId: p.venue?.id,
@@ -88,6 +88,26 @@ export default function ScreenAdminConcerts({ navigate, onToast }) {
         onToast && onToast('공연이 취소 처리됐습니다');
       })
       .catch(() => onToast && onToast('취소 처리 실패', 'ink'));
+  };
+
+  // 공연 복구 — PUT /api/admin/performances/{id} (cancelled: false로 되돌림)
+  const restore = (p) => {
+    const body = {
+      venueId: p.venue?.id,
+      startTime: p.startTime,
+      title: p.title,
+      genre: p.genre || null,
+      setInfo: p.setInfo || null,
+      setList: p.setList || null,
+      cancelled: false,
+      sourceUrl: p.sourceUrl || null,
+    };
+    api.updateAdminPerformance(p.id, body)
+      .then((updated) => {
+        setPerformances((prev) => prev.map((x) => x.id === p.id ? updated : x));
+        onToast && onToast('공연이 복구됐습니다');
+      })
+      .catch(() => onToast && onToast('복구 실패', 'ink'));
   };
 
   if (loading) {
@@ -212,8 +232,15 @@ export default function ScreenAdminConcerts({ navigate, onToast }) {
                       <button className="btn ghost sm" onClick={() => navigate('concert-detail', { concertId: p.id })}>
                         <Icon name="external" size={13} />
                       </button>
+                      {/* 취소된 공연: 복구 버튼 표시 */}
+                      {p.cancelled && (
+                        <button className="btn ghost sm" title="공연 복구" onClick={() => restore(p)}>
+                          <Icon name="undo" size={13} />
+                        </button>
+                      )}
+                      {/* 예정 공연(취소 안 됨): 취소 버튼 표시 */}
                       {isUpcoming(p) && !p.cancelled && (
-                        <button className="btn ghost sm" onClick={() => cancel(p)}>
+                        <button className="btn ghost sm" title="공연 취소" onClick={() => cancel(p)}>
                           <Icon name="x" size={13} />
                         </button>
                       )}
