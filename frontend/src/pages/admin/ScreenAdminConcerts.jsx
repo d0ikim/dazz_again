@@ -250,6 +250,7 @@ export default function ScreenAdminConcerts({ navigate, onToast }) {
               ))}
             </tbody>
           </table>
+
           {list.length === 0 && (
             <div className="empty-state sm">
               <p className="muted">{tab === 'upcoming' ? '예정 공연 없음' : '지난 공연 없음'}</p>
