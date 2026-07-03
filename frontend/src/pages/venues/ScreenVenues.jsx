@@ -1,7 +1,8 @@
 // 공연장 목록 페이지 — 서울 재즈 공연장을 목록으로 보여주는 화면
-import { useState, useEffect } from 'react'; // useState: 상태 관리 / useEffect: 마운트 시 API 호출에 사용
+import { useState, useEffect, useMemo, useCallback } from 'react'; // useState: 상태 관리 / useEffect: 마운트 시 API 호출 / useMemo·useCallback: 불필요한 재계산 방지
 import Icon from '../../components/Icon';     // 아이콘 컴포넌트
 import { api } from '../../api/client';       // 백엔드 API 호출 함수 모음
+import VenueMap from './VenueMap';            // 카카오맵 위에 공연장 마커를 그리는 컴포넌트
 
 export default function ScreenVenues({ navigate }) {
   // venues: 백엔드에서 받아온 공연장 목록 (초기값은 빈 배열)
@@ -41,11 +42,20 @@ export default function ScreenVenues({ navigate }) {
   const districts = ['전체', ...new Set(venues.map((v) => extractDistrict(v.location)))];
 
   // 선택된 구 + 검색어로 공연장 필터링 (두 조건 모두 만족해야 표시)
-  const list = venues.filter((v) => {
+  // useMemo: district/query/venues가 실제로 바뀔 때만 새 배열을 만듦 — 매 렌더링마다 새 배열을 만들면
+  // VenueMap의 마커 그리기 useEffect가 (내용은 같아도 배열 참조가 달라졌다는 이유로) 계속 재실행돼서
+  // 마커를 클릭할 때마다 지도가 "전체 보기"로 리셋됐다가 다시 이동하는 버벅임(튕김)이 생김
+  const list = useMemo(() => venues.filter((v) => {
     const matchDistrict = district === '전체' || extractDistrict(v.location) === district; // 구 필터 만족 여부
     const matchQuery = query === '' || v.name.toLowerCase().includes(query.toLowerCase()); // 이름 검색 만족 여부
     return matchDistrict && matchQuery; // 둘 다 만족하면 표시
-  });
+  }), [venues, district, query]);
+
+  // 마커/카드 클릭 시 선택 토글 — useCallback으로 함수 참조를 고정해 위와 같은 이유로 마커가 다시 그려지는 것을 방지
+  // setSelected(prev => ...) 형태(함수형 업데이트)를 쓰면 selected 값을 클로저로 참조할 필요가 없어 deps 배열을 비워둘 수 있음
+  const handleSelectVenue = useCallback((id) => {
+    setSelected((prev) => (id === prev ? null : id));
+  }, []);
 
   // 현재 선택(펼쳐진) 공연장 객체 — 없으면 null
   const sel = selected ? venues.find((v) => v.id === selected) : null;
@@ -67,12 +77,12 @@ export default function ScreenVenues({ navigate }) {
         <h1 className="h2 serif" style={{ marginBottom: 6 }}>재즈 공연장</h1>
         <p className="muted" style={{ marginBottom: 18 }}>서울 주요 재즈 공연장을 확인하세요.</p>
 
-        {/* 지도 영역 — 백엔드에 좌표 데이터가 없어 준비 중 표시 */}
-        <div className="coming-soon-box">
-          <Icon name="map" size={22} color="var(--mute)" />
-          <span className="coming-soon-label">지도 보기 준비 중</span>
-          <span className="coming-soon-sub">공연장 위치 지도는 곧 제공될 예정입니다</span>
-        </div>
+        {/* 지도 영역 — 필터링된 공연장 목록(list)을 카카오맵 위에 마커로 표시 */}
+        <VenueMap
+          venues={list}
+          selected={selected}
+          onSelect={handleSelectVenue} // 같은 마커 다시 클릭하면 선택 해제
+        />
 
         {/* 공연장명 검색 */}
         <div className="field" style={{ marginTop: 18, marginBottom: 16, width: 'auto' }}>

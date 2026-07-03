@@ -2,6 +2,9 @@
 
 서울 재즈 씬을 위한 플랫폼 — 공연장·뮤지션·공연 검색, 인맥지도
 
+![Backend CI/CD](https://github.com/d0ikim/dazz_again/actions/workflows/backend.yml/badge.svg)
+![Frontend CI/CD](https://github.com/d0ikim/dazz_again/actions/workflows/frontend.yml/badge.svg)
+
 ## 기술 스택
 
 **Backend**
@@ -16,32 +19,23 @@
 - React 19 / Vite
 - 순수 CSS (디자인 시스템 직접 구현)
 - 상태 기반 라우팅 (history.pushState)
+- 카카오맵 (공연장 위치 표시)
 
 ---
 
-## 진행 현황
+## 주요 기능
 
-### ✅ 완료
-| 브랜치 | 내용 |
-|---|---|
-| `feat/venue-search` | 공연장 목록 조회 및 이름/위치 키워드 검색 API |
-| `feat/musician-search` | 뮤지션 목록 조회 및 활동명/악기 키워드 검색 API |
-| `feat/auth-user` | 카카오 소셜 로그인 + JWT 발급/검증 + 유저 도메인 (GENERAL/MUSICIAN/ADMIN) |
-| `feat/musician-verify` | 뮤지션 인증 신청 API (신청/상태조회) |
-| `feat/performance` | 공연 목록 조회 및 공연명/장르 키워드 검색 API |
-| `feat/frontend-setup` | React 프론트엔드 전체 구현 (디렉토리, 공연장, 공연, 이력서, 대시보드, 어드민, 인맥지도) |
-| `feat/connect-api` | CORS 설정, 뮤지션 단건 조회 API (`GET /api/musicians/{id}`) |
-| `feat/graph-api` | 뮤지션별 공연 목록 API, 뮤지션 인맥지도 API |
-| `feat/auth-api` | 본인 정보 조회/로그아웃 API, 뮤지션 프로필 수정 API, 카카오 로그인 프론트 연동 |
-| `feat/admin-api` | 어드민 인증 관리 API — 대기 목록 조회 / 승인 / 거부 |
-| `feat/admin-api` | 어드민 공연장/공연 관리 API — 공연장 등록·수정 / 공연 등록·수정 |
-| `feat/performance-api` | 공연 단건 조회 API (`GET /api/performances/{id}`) |
-| `feat/performance-api` | 공연 이력 추가 API (`POST /api/performances`, MUSICIAN 전용) |
-| `feat/connect-frontend` | 프론트엔드 ↔ 백엔드 실제 데이터 연결 (mock 데이터 제거) |
+- **공연장 / 뮤지션 / 공연 검색** — 이름, 위치(구 단위), 활동명, 악기, 장르 등 키워드 기반 검색
+- **공연장 지도** — 카카오맵 위에 공연장 위치를 마커로 표시, 마커 호버/클릭 시 정보 말풍선 노출
+- **뮤지션 인맥지도** — 함께 공연한 협연자와 협연 횟수를 그래프로 시각화
+- **카카오 소셜 로그인 + JWT 인증** — GENERAL / MUSICIAN / ADMIN 3가지 유저 역할
+- **뮤지션 인증 플로우** — 일반 유저의 뮤지션 인증 신청 → 어드민 승인/거부
+- **어드민 관리** — 공연장·공연 등록/수정, 뮤지션 인증 대기 목록 관리
+- **공연장 좌표 크롤링** — Kakao Local API로 기존 공연장 주소를 위도/경도로 변환해 저장
 
 ---
 
-## API 엔드포인트 & 프론트엔드 연결 현황
+## API 엔드포인트
 
 ### 공연장
 | Method | URL | 설명 | 인증 | 프론트 |
