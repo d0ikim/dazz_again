@@ -1,0 +1,66 @@
+# GitHub Actions 프론트엔드 CI/CD 워크플로우
+# 프론트엔드 코드가 푸시되면 자동으로 빌드 + 테스트 실행
+
+name: Frontend CI/CD
+
+on:
+  push:
+    branches: [ main ]
+    # frontend/ 폴더 또는 이 파일이 변경될 때만 실행
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/frontend.yml'
+
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/frontend.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1단계: 코드 다운로드
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2단계: Node.js 20 설치
+      # Node.js = JavaScript를 실행하는 환경
+      # npm = Node.js의 패키지 매니저 (라이브러리 설치할 때 사용)
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          # cache: npm의 node_modules를 캐시 (다음번 빌드가 빨라짐)
+          cache: 'npm'
+          cache-dependency-path: 'frontend/package-lock.json'
+
+      # 3단계: npm install 실행
+      # package.json에 정의된 라이브러리들을 자동으로 설치
+      # 예: React, Vite, axios 등등
+      - name: Install dependencies
+        run: |
+          cd frontend
+          npm install
+
+      # 4단계: npm run build 실행
+      # React 코드를 브라우저가 이해할 수 있는 HTML/CSS/JS로 변환
+      # 이 과정을 "빌드"라고 부름
+      # 결과: frontend/dist/ 폴더에 배포용 파일들이 생성됨
+      - name: Build
+        run: |
+          cd frontend
+          npm run build
+
+      # 5단계: 빌드 성공 시 메시지
+      # 실제 배포에서는 여기서 dist/ 폴더를 서버에 업로드함
+      - name: Build succeeded
+        if: success()
+        run: echo "✅ Frontend build succeeded!"
+
+      # 6단계: 빌드 실패 시 알림
+      - name: Build failed
+        if: failure()
+        run: echo "❌ Frontend build failed! Check the logs above."
