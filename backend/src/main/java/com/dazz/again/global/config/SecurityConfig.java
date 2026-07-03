@@ -8,11 +8,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;                  // HTTP 메서드(GET, PUT 등)를 상수로 제공하는 클래스
+import org.springframework.http.HttpStatus;                  // HTTP 상태코드 상수 (예: HttpStatus.UNAUTHORIZED = 401)
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.HttpStatusEntryPoint; // 인증 실패 시 지정한 HTTP 상태코드를 바로 반환
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -49,6 +51,17 @@ public class SecurityConfig {
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()   // Swagger 문서는 누구나
                 .requestMatchers("/oauth2/**", "/login/**").permitAll()             // 카카오 로그인 URL은 누구나
                 .anyRequest().authenticated()                                        // 나머지는 로그인 필요
+            )
+
+            // REST API 전용 예외 처리
+            // oauth2Login이 설정되면 기본 동작이 인증 실패 시 카카오 로그인으로 302 리다이렉트이지만,
+            // API 요청은 브라우저가 리다이렉트를 따라가서 CORS 오류가 나므로
+            // /api/** 경로는 리다이렉트 대신 401 상태코드를 바로 반환하도록 설정
+            .exceptionHandling(ex -> ex
+                .defaultAuthenticationEntryPointFor(
+                    new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED), // 인증 실패 → 401 반환 (리다이렉트 안 함)
+                    request -> request.getRequestURI().startsWith("/api/") // /api/** 경로에만 적용 (람다로 RequestMatcher 구현)
+                )
             )
 
             // 카카오 소셜 로그인 설정

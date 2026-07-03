@@ -16,14 +16,17 @@ export default function ScreenVenues({ navigate }) {
   // district: 현재 선택된 구 필터 (예: '마포구', '전체')
   const [district, setDistrict] = useState('전체');
 
+  // query: 검색창에 입력된 공연장명 검색어 (실시간 필터링)
+  const [query, setQuery] = useState('');
+
   // useEffect: 컴포넌트가 처음 화면에 나타날 때(마운트 시) 딱 한 번 실행
   // 의존성 배열이 []이므로 재렌더링 시에는 재실행되지 않음
   useEffect(() => {
-    api.getVenues()                // GET /api/venues — 전체 공연장 목록 요청
-      .then((data) => setVenues(data))  // 성공: 받아온 배열을 venues 상태에 저장
-      .catch(() => {})             // 실패: 빈 목록 그대로 유지 (에러 메시지는 추후 추가 가능)
-      .finally(() => setLoading(false)); // 성공이든 실패든 로딩 상태 종료
-  }, []); // 빈 배열: 마운트 시 1회만 실행
+    api.getVenues()
+      .then((data) => setVenues(data))
+      .catch((err) => console.error('[ScreenVenues] getVenues 실패:', err))
+      .finally(() => setLoading(false));
+  }, []);
 
   // location 문자열에서 구 이름을 추출하는 함수
   // 예: "서울시 마포구 서교동 358-1" → "마포구"
@@ -37,10 +40,12 @@ export default function ScreenVenues({ navigate }) {
   // new Set(): 중복 제거 / 스프레드 연산자(...)로 다시 배열로 변환
   const districts = ['전체', ...new Set(venues.map((v) => extractDistrict(v.location)))];
 
-  // 선택된 구에 해당하는 공연장만 필터링
-  const list = district === '전체'
-    ? venues
-    : venues.filter((v) => extractDistrict(v.location) === district);
+  // 선택된 구 + 검색어로 공연장 필터링 (두 조건 모두 만족해야 표시)
+  const list = venues.filter((v) => {
+    const matchDistrict = district === '전체' || extractDistrict(v.location) === district; // 구 필터 만족 여부
+    const matchQuery = query === '' || v.name.toLowerCase().includes(query.toLowerCase()); // 이름 검색 만족 여부
+    return matchDistrict && matchQuery; // 둘 다 만족하면 표시
+  });
 
   // 현재 선택(펼쳐진) 공연장 객체 — 없으면 null
   const sel = selected ? venues.find((v) => v.id === selected) : null;
@@ -69,8 +74,21 @@ export default function ScreenVenues({ navigate }) {
           <span className="coming-soon-sub">공연장 위치 지도는 곧 제공될 예정입니다</span>
         </div>
 
+        {/* 공연장명 검색 */}
+        <div className="field" style={{ marginTop: 18, marginBottom: 16, width: 'auto' }}>
+          <div className="prefix">
+            <span><Icon name="search" size={14} /></span>
+            <input
+              type="text"
+              placeholder="공연장명 검색"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)} // 입력값 변경 시 실시간 필터링
+            />
+          </div>
+        </div>
+
         {/* 구 단위 필터 칩 버튼 목록 */}
-        <div className="chip-group" style={{ marginTop: 18, marginBottom: 16 }}>
+        <div className="chip-group" style={{ marginBottom: 16 }}>
           {districts.map((d) => (
             <button
               key={d}
