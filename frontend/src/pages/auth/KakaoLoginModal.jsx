@@ -1,5 +1,7 @@
 import Logo from '../../components/Logo';
 import Icon from '../../components/Icon';
+// BASE_URL: 백엔드 주소 (VITE_API_URL 환경변수 또는 로컬 기본값) — 하드코딩 대신 이걸 사용
+import { BASE_URL } from '../../api/client';
 
 export default function KakaoLoginModal({ onClose, onLogin, reason }) {
   return (
@@ -18,7 +20,8 @@ export default function KakaoLoginModal({ onClose, onLogin, reason }) {
         </p>
 
         <button className="btn kakao full lg" onClick={() => {
-          window.location.href = 'http://localhost:8080/oauth2/authorization/kakao';
+          // 카카오 로그인 시작: 백엔드의 OAuth2 시작 주소로 브라우저를 통째로 이동 (fetch가 아닌 페이지 이동이라 api 객체 대신 BASE_URL 직접 사용)
+          window.location.href = `${BASE_URL}/oauth2/authorization/kakao`;
         }}>
           <Icon name="chat" size={18} /> 카카오 계정으로 로그인 / 가입
         </button>

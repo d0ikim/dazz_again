@@ -3,7 +3,8 @@
 
 // import.meta.env: Vite가 제공하는 환경변수 접근 객체
 // VITE_API_URL이 .env 파일에 설정돼 있으면 그 값을 쓰고, 없으면 로컬 백엔드 주소 사용
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+// export: 카카오 로그인처럼 api 객체를 거치지 않고 백엔드 주소가 직접 필요한 곳에서도 쓰도록 공개
+export const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
 // 모든 API 호출에서 공통으로 사용하는 fetch 래퍼 함수
 // path: '/api/musicians' 같은 API 경로
