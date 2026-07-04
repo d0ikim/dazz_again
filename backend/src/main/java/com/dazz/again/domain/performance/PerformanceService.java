@@ -51,6 +51,15 @@ public class PerformanceService {
         return performanceRepository.findByMusicianId(musicianId);
     }
 
+    // 특정 공연의 라인업(출연 뮤지션 목록) 조회
+    public List<Musician> findLineup(Long performanceId) {
+        // 공연 존재 여부 먼저 확인 — 없는 공연 id면 예외를 던져 Controller가 404로 처리
+        if (!performanceRepository.existsById(performanceId)) {
+            throw new NoSuchElementException("존재하지 않는 공연입니다. id=" + performanceId);
+        }
+        return performanceLineupRepository.findMusiciansByPerformanceId(performanceId);
+    }
+
     // MUSICIAN 전용 — 본인 공연 이력 추가
     // 1) userId로 내 뮤지션 프로필 조회 → 2) 공연 저장 → 3) 라인업에 본인 등록
     @Transactional // DB에 저장하므로 읽기 전용 해제

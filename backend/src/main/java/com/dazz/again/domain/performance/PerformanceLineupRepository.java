@@ -2,6 +2,7 @@
 package com.dazz.again.domain.performance;
 
 import com.dazz.again.domain.musician.GraphEdgeResponse;
+import com.dazz.again.domain.musician.Musician;          // 라인업 조회 시 뮤지션 엔티티 반환용
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -43,6 +44,11 @@ public interface PerformanceLineupRepository extends JpaRepository<PerformanceLi
             ORDER BY COUNT(pl.performance) DESC
             """)
     List<GraphEdgeResponse> findCoPerformers(@Param("musicianId") Long musicianId);
+
+    // 특정 공연에 출연하는 뮤지션 목록 조회 (공연 수정 폼에서 현재 라인업 표시용)
+    // pl.musician만 SELECT — 라인업 행이 아니라 그 안의 Musician 엔티티를 바로 반환
+    @Query("SELECT pl.musician FROM PerformanceLineup pl WHERE pl.performance.id = :performanceId")
+    List<Musician> findMusiciansByPerformanceId(@Param("performanceId") Long performanceId);
 
     // 특정 공연의 라인업을 전부 삭제하는 메서드 (공연 수정 시 라인업 교체용)
     //

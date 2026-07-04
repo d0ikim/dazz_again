@@ -71,6 +71,7 @@
 | GET | `/api/performances/{id}` | 공연 단건 조회 | 불필요 | ✓ |
 | GET | `/api/performances/search?type=title&keyword=` | 공연명 검색 | 불필요 | ✓ |
 | GET | `/api/performances/search?type=genre&keyword=` | 장르 검색 | 불필요 | - |
+| GET | `/api/performances/{id}/lineup` | 공연 라인업(출연 뮤지션) 조회 | 불필요 | ✓ |
 | GET | `/api/performances/musician/{id}` | 특정 뮤지션의 공연 목록 | 불필요 | ✓ |
 | POST | `/api/performances` | 공연 이력 추가 | 필요 (MUSICIAN) | ✓ |
 | POST | `/api/admin/performances` | 공연 등록 (라인업 포함 가능) | 필요 (ADMIN) | ✓ |

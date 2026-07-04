@@ -86,6 +86,21 @@ public class PerformanceController {
         }
     }
 
+    @Operation(summary = "공연 라인업 조회", description = "특정 공연에 출연하는 뮤지션 목록을 반환합니다.")
+    @ApiResponse(responseCode = "200", description = "조회 성공")
+    @ApiResponse(responseCode = "404", description = "해당 id의 공연 없음")
+    @GetMapping("/{id}/lineup")
+    public ResponseEntity<?> findLineup(
+            @Parameter(description = "공연 id", example = "1")
+            @PathVariable Long id
+    ) {
+        try {
+            return ResponseEntity.ok(performanceService.findLineup(id));
+        } catch (NoSuchElementException e) {
+            return ResponseEntity.notFound().build(); // 존재하지 않는 공연 id면 404 반환
+        }
+    }
+
     @Operation(summary = "뮤지션별 공연 목록 조회", description = "특정 뮤지션이 출연한 공연 목록을 공연시작시간 오름차순으로 반환합니다.")
     @ApiResponse(responseCode = "200", description = "조회 성공")
     @GetMapping("/musician/{musicianId}")

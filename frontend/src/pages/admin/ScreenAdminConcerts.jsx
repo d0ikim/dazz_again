@@ -16,8 +16,8 @@ function isUpcoming(p) {
   return new Date(p.startTime) > new Date();
 }
 
-// 빈 등록 폼 초기값
-const EMPTY_FORM = { venueId: '', date: '', time: '20:00', title: '', genre: '', setInfo: '', sourceUrl: '' };
+// 빈 등록 폼 초기값 — musicianIds: 선택한 출연 뮤지션 id 배열 (라인업)
+const EMPTY_FORM = { venueId: '', date: '', time: '20:00', title: '', genre: '', setInfo: '', sourceUrl: '', musicianIds: [] };
 
 export default function ScreenAdminConcerts({ navigate, onToast }) {
   const [performances, setPerformances] = useState([]);
@@ -27,25 +27,71 @@ export default function ScreenAdminConcerts({ navigate, onToast }) {
   // venues: 공연장 드롭다운에 표시할 목록
   const [venues, setVenues] = useState([]);
 
-  // adding: true이면 등록 폼 행 표시
+  // musicians: 라인업 드롭다운에 표시할 전체 뮤지션 목록
+  const [musicians, setMusicians] = useState([]);
+
+  // adding: true이면 등록/수정 폼 행 표시
   const [adding, setAdding] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
+
+  // editing: 수정 모드일 때 수정 대상 공연 객체 (null이면 신규 등록 모드)
+  // 폼에 없는 필드(setList, cancelled)를 수정 요청에 그대로 보존하기 위해 객체 통째로 저장
+  const [editing, setEditing] = useState(null);
 
   // query: 공연명 검색어 (실시간 필터링)
   const [query, setQuery] = useState('');
 
   useEffect(() => {
-    // 공연 목록과 공연장 목록을 병렬로 로드
-    Promise.all([api.getPerformances(), api.getVenues()])
-      .then(([perfs, vs]) => { setPerformances(perfs); setVenues(vs); })
+    // 공연 목록·공연장 목록·뮤지션 목록을 병렬로 로드
+    Promise.all([api.getPerformances(), api.getVenues(), api.getMusicians()])
+      .then(([perfs, vs, ms]) => { setPerformances(perfs); setVenues(vs); setMusicians(ms); })
       .catch(() => onToast && onToast('목록 조회 실패', 'ink'))
       .finally(() => setLoading(false));
   }, []);
 
   const setField = (k, v) => setForm((p) => ({ ...p, [k]: v }));
 
-  // 공연 등록 — POST /api/admin/performances
+  // 라인업에 뮤지션 추가 — 드롭다운에서 선택 시 호출 (중복 선택 방지)
+  const addMusician = (id) => {
+    if (!id) return;
+    const numId = Number(id);
+    setForm((p) => p.musicianIds.includes(numId) ? p : { ...p, musicianIds: [...p.musicianIds, numId] });
+  };
+
+  // 라인업에서 뮤지션 제거 — 선택된 칩의 x 버튼 클릭 시 호출
+  const removeMusician = (id) => {
+    setForm((p) => ({ ...p, musicianIds: p.musicianIds.filter((mid) => mid !== id) }));
+  };
+
+  // 수정 모드 시작 — 편집 버튼 클릭 시 기존 공연 정보로 폼을 채우고 폼을 엶
+  const startEdit = (p) => {
+    setEditing(p);
+    setForm({
+      venueId: String(p.venue?.id || ''),        // select의 value는 문자열이므로 변환
+      date: p.startTime ? p.startTime.slice(0, 10) : '',   // "2026-05-18T20:00:00" → "2026-05-18"
+      time: p.startTime ? p.startTime.slice(11, 16) : '20:00', // → "20:00"
+      title: p.title || '',
+      genre: p.genre || '',
+      setInfo: p.setInfo || '',
+      sourceUrl: p.sourceUrl || '',
+      musicianIds: [], // 일단 빈 배열로 폼을 열고, 아래에서 현재 라인업을 불러와 채움
+    });
+    setAdding(true);
+    // 현재 라인업 조회 — GET /api/performances/{id}/lineup
+    api.getPerformanceLineup(p.id)
+      .then((ms) => setForm((f) => ({ ...f, musicianIds: ms.map((m) => m.id) })))
+      .catch(() => onToast && onToast('라인업 조회 실패', 'ink'));
+  };
+
+  // 폼 닫기 — 등록/수정 모드 공통 (취소 버튼, 저장 성공 시 사용)
+  const closeForm = () => {
+    setAdding(false);
+    setEditing(null);
+    setForm(EMPTY_FORM);
+  };
+
+  // 공연 저장 — editing이 있으면 수정(PUT), 없으면 신규 등록(POST)
   const save = () => {
     if (!form.venueId || !form.date || !form.title) return;
     setSaving(true);
@@ -55,15 +101,30 @@ export default function ScreenAdminConcerts({ navigate, onToast }) {
       title: form.title,
       genre: form.genre || null,
       setInfo: form.setInfo || null,
-      setList: null,
+      setList: editing ? (editing.setList || null) : null, // 폼에 없는 필드 — 수정 시 기존 값 보존
       sourceUrl: form.sourceUrl || null,
-      cancelled: false,
+      cancelled: editing ? editing.cancelled : false,      // 수정 시 기존 취소 상태 유지
+      musicianIds: form.musicianIds, // 출연 뮤지션 id 배열 — 등록 시 라인업 저장, 수정 시 이 목록으로 교체
     };
-    api.createAdminPerformance(body)           // POST /api/admin/performances
+
+    // 수정 모드: PUT /api/admin/performances/{id}
+    if (editing) {
+      api.updateAdminPerformance(editing.id, body)
+        .then((updated) => {
+          setPerformances((prev) => prev.map((x) => x.id === updated.id ? updated : x)); // 목록에서 해당 공연만 교체
+          closeForm();
+          onToast && onToast('공연이 수정됐습니다');
+        })
+        .catch(() => onToast && onToast('공연 수정 실패', 'ink'))
+        .finally(() => setSaving(false));
+      return;
+    }
+
+    // 등록 모드: POST /api/admin/performances
+    api.createAdminPerformance(body)
       .then((created) => {
         setPerformances((prev) => [created, ...prev]); // 목록 맨 앞에 추가
-        setAdding(false);
-        setForm(EMPTY_FORM);
+        closeForm();
         onToast && onToast('공연이 등록됐습니다');
       })
       .catch(() => onToast && onToast('공연 등록 실패', 'ink'))
@@ -71,6 +132,7 @@ export default function ScreenAdminConcerts({ navigate, onToast }) {
   };
 
   // 공연 취소 — PUT /api/admin/performances/{id} (cancelled: true로 마킹)
+  // musicianIds를 아예 안 보내면(생략) 백엔드가 기존 라인업을 그대로 유지함
   const cancel = (p) => {
     const body = {
       venueId: p.venue?.id,
@@ -127,7 +189,7 @@ export default function ScreenAdminConcerts({ navigate, onToast }) {
       <div className="pad">
         <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <h1 className="h2 serif" style={{ margin: 0 }}>공연 관리 ({performances.length})</h1>
-          <button className="btn primary sm" onClick={() => { setAdding(true); setTab('upcoming'); }}>
+          <button className="btn primary sm" onClick={() => { setEditing(null); setForm(EMPTY_FORM); setAdding(true); setTab('upcoming'); }}>
             <Icon name="plus" size={14} /> 공연 등록
           </button>
         </div>
@@ -167,11 +229,44 @@ export default function ScreenAdminConcerts({ navigate, onToast }) {
                 <label className="label">출처 링크</label>
                 <input type="url" placeholder="인스타 포스트 URL 등" value={form.sourceUrl} onChange={(e) => setField('sourceUrl', e.target.value)} />
               </div>
+              {/* 라인업(출연 뮤지션) 선택 — 드롭다운에서 고르면 아래에 칩으로 쌓임 */}
+              <div className="field" style={{ gridColumn: '1 / -1' }}>
+                <label className="label">라인업 (출연 뮤지션)</label>
+                {/* value=""로 고정 — 선택 즉시 목록에 추가하고 드롭다운은 placeholder로 되돌림 */}
+                <select value="" onChange={(e) => addMusician(e.target.value)}>
+                  <option value="">뮤지션 선택해서 추가</option>
+                  {musicians
+                    .filter((m) => !form.musicianIds.includes(m.id)) // 이미 추가한 뮤지션은 목록에서 숨김
+                    .map((m) => <option key={m.id} value={m.id}>{m.stageName}{m.position ? ` — ${m.position}` : ''}</option>)}
+                </select>
+                {/* 선택된 뮤지션 칩 목록 — x 클릭으로 제거 */}
+                {form.musicianIds.length > 0 && (
+                  <div className="row" style={{ gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+                    {form.musicianIds.map((mid) => {
+                      const m = musicians.find((x) => x.id === mid); // id로 뮤지션 정보 찾기 (이름 표시용)
+                      return (
+                        <span key={mid} className="pill light sm" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                          {m ? m.stageName : `#${mid}`}
+                          <button
+                            type="button"
+                            onClick={() => removeMusician(mid)}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'inline-flex' }}
+                            aria-label="라인업에서 제거"
+                          >
+                            <Icon name="x" size={11} />
+                          </button>
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
             <div className="row" style={{ justifyContent: 'flex-end', gap: 8, marginTop: 12 }}>
-              <button className="btn ghost sm" onClick={() => { setAdding(false); setForm(EMPTY_FORM); }}>취소</button>
+              <button className="btn ghost sm" onClick={closeForm}>취소</button>
+              {/* editing 여부에 따라 버튼 문구를 등록/수정으로 전환 */}
               <button className="btn primary sm" disabled={!canSave || saving} onClick={save}>
-                {saving ? '등록 중...' : '등록'}
+                {saving ? (editing ? '수정 중...' : '등록 중...') : (editing ? '수정' : '등록')}
               </button>
             </div>
           </div>
@@ -231,6 +326,10 @@ export default function ScreenAdminConcerts({ navigate, onToast }) {
                     <div className="row" style={{ gap: 6 }}>
                       <button className="btn ghost sm" onClick={() => navigate('concert-detail', { concertId: p.id })}>
                         <Icon name="external" size={13} />
+                      </button>
+                      {/* 공연 편집 버튼 — 기존 정보와 현재 라인업이 채워진 수정 폼을 엶 */}
+                      <button className="btn ghost sm" title="공연 수정" onClick={() => startEdit(p)}>
+                        <Icon name="edit" size={13} />
                       </button>
                       {/* 취소된 공연: 복구 버튼 표시 */}
                       {p.cancelled && (
