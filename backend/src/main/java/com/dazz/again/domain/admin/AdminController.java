@@ -157,36 +157,50 @@ public class AdminController {
 
     @Operation(
             summary = "공연 등록",
-            description = "새 공연을 등록합니다. ADMIN만 호출 가능.",
+            description = """
+                    새 공연을 등록합니다. ADMIN만 호출 가능.
+
+                    **musicianIds (라인업)**
+                    - 출연 뮤지션 id 목록을 함께 보내면 공연 저장 후 라인업(performance_lineup)에도 등록됩니다.
+                    - 생략(null)하면 라인업 없이 공연만 등록됩니다.
+                    - 존재하지 않는 뮤지션 id가 섞여 있으면 공연 등록까지 전부 취소(롤백)됩니다.
+                    """,
             security = @SecurityRequirement(name = "bearerAuth")
     )
     @ApiResponse(responseCode = "200", description = "등록 성공")
-    @ApiResponse(responseCode = "400", description = "존재하지 않는 공연장 id")
+    @ApiResponse(responseCode = "400", description = "존재하지 않는 공연장 또는 뮤지션 id")
     @PostMapping("/performances")
     public ResponseEntity<?> createPerformance(@RequestBody PerformanceRequest request) {
         // 요청 바디의 JSON을 PerformanceRequest 객체로 받아 PerformanceService에 등록 요청
         try {
             return ResponseEntity.ok(performanceService.create(request));
         } catch (NoSuchElementException e) {
-            // 요청의 venueId에 해당하는 공연장이 없으면 400 반환
+            // 요청의 venueId에 해당하는 공연장이 없거나 musicianIds에 없는 뮤지션이 있으면 400 반환
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 
     @Operation(
             summary = "공연 수정",
-            description = "기존 공연 정보를 수정합니다. ADMIN만 호출 가능.",
+            description = """
+                    기존 공연 정보를 수정합니다. ADMIN만 호출 가능.
+
+                    **musicianIds (라인업)**
+                    - 목록을 보내면 기존 라인업을 전부 지우고 보낸 목록으로 교체합니다.
+                    - 빈 배열([])을 보내면 라인업이 전부 삭제됩니다.
+                    - 생략(null)하면 라인업은 건드리지 않고 공연 정보만 수정됩니다.
+                    """,
             security = @SecurityRequirement(name = "bearerAuth")
     )
     @ApiResponse(responseCode = "200", description = "수정 성공")
-    @ApiResponse(responseCode = "400", description = "존재하지 않는 공연 또는 공연장 id")
+    @ApiResponse(responseCode = "400", description = "존재하지 않는 공연, 공연장 또는 뮤지션 id")
     @PutMapping("/performances/{id}")
     public ResponseEntity<?> updatePerformance(@PathVariable Long id, @RequestBody PerformanceRequest request) {
         // {id}로 수정할 공연을 특정하고, 요청 바디로 새 값을 받아 PerformanceService에 수정 요청
         try {
             return ResponseEntity.ok(performanceService.update(id, request));
         } catch (NoSuchElementException e) {
-            // 존재하지 않는 공연 또는 공연장 id면 400 반환
+            // 존재하지 않는 공연, 공연장 또는 뮤지션 id면 400 반환
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }

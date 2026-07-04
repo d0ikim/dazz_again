@@ -106,7 +106,12 @@ public class PerformanceService {
                 .sourceUrl(request.getSourceUrl())     // 출처 URL (null 가능)
                 .build();                              // 객체 생성 완료
 
-        return performanceRepository.save(performance); // INSERT INTO performance ... — 새 객체라 save() 필요
+        performanceRepository.save(performance); // INSERT INTO performance ... — 여기서 performance.id가 채워짐
+
+        // 요청에 musicianIds가 있으면 출연 뮤지션들을 라인업에 등록 (null이면 라인업 없이 공연만 저장)
+        saveLineup(performance, request.getMusicianIds());
+
+        return performance; // 저장된 공연 정보 반환
     }
 
     // ADMIN 전용 — 공연 수정 — id로 기존 공연을 찾아 update() 호출
@@ -128,6 +133,38 @@ public class PerformanceService {
                 request.isCancelled(),   // 취소 여부
                 request.getSourceUrl()   // 출처 URL
         );                       // save() 없음 — @Transactional + 더티 체킹으로 트랜잭션 종료 시 UPDATE 자동 실행
+
+        // 요청에 musicianIds가 있으면 기존 라인업을 전부 지우고 새 목록으로 교체
+        // (null이면 라인업은 손대지 않음 — 공연 정보만 수정하고 싶을 때를 위해)
+        if (request.getMusicianIds() != null) {
+            performanceLineupRepository.deleteById_PerformanceId(performance.getId()); // 기존 라인업 전체 삭제
+            performanceLineupRepository.flush(); // DELETE를 즉시 DB에 반영 — JPA는 기본적으로 INSERT를 DELETE보다 먼저 내보내서,
+                                                 // flush 없이 같은 뮤지션을 다시 넣으면 "이미 존재하는 PK" 충돌이 날 수 있음
+            saveLineup(performance, request.getMusicianIds());                         // 새 목록으로 다시 등록
+        }
+
         return performance;      // 수정된 엔티티 반환
+    }
+
+    // 공통 로직 — 뮤지션 id 목록을 라인업(performance_lineup)에 저장
+    // create()와 update() 양쪽에서 호출하므로 별도 메서드로 분리
+    private void saveLineup(Performance performance, List<Long> musicianIds) {
+        if (musicianIds == null) {
+            return; // musicianIds를 아예 안 보낸 경우 — 라인업 저장 생략
+        }
+
+        for (Long musicianId : musicianIds) {
+            // 존재하지 않는 뮤지션 id가 섞여 있으면 예외 발생
+            // → @Transactional 덕분에 이미 저장된 공연/라인업까지 전부 롤백됨 (전체 성공 아니면 전체 취소)
+            Musician musician = musicianRepository.findById(musicianId)
+                    .orElseThrow(() -> new NoSuchElementException("존재하지 않는 뮤지션입니다. id=" + musicianId));
+
+            PerformanceLineup lineup = PerformanceLineup.builder()
+                    .id(new PerformanceLineupId(performance.getId(), musician.getId())) // 복합키(공연id, 뮤지션id) 생성
+                    .performance(performance)  // 공연 객체
+                    .musician(musician)        // 뮤지션 객체
+                    .build();
+            performanceLineupRepository.save(lineup); // performance_lineup 테이블에 INSERT
+        }
     }
 }

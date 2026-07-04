@@ -43,4 +43,15 @@ public interface PerformanceLineupRepository extends JpaRepository<PerformanceLi
             ORDER BY COUNT(pl.performance) DESC
             """)
     List<GraphEdgeResponse> findCoPerformers(@Param("musicianId") Long musicianId);
+
+    // 특정 공연의 라인업을 전부 삭제하는 메서드 (공연 수정 시 라인업 교체용)
+    //
+    // 메서드 이름 규칙(쿼리 메서드)으로 Spring Data JPA가 쿼리를 자동 생성함:
+    //   deleteBy + Id(복합키 필드명) + _(언더스코어: 복합키 안으로 한 단계 들어감) + PerformanceId
+    //   → "복합키(id) 안의 performanceId가 일치하는 행을 모두 DELETE"
+    // 실행되는 SQL: DELETE FROM performance_lineup WHERE performance_id = ?
+    //
+    // 삭제는 DB를 변경하는 작업이라 트랜잭션 안에서만 실행 가능
+    // → 호출하는 쪽(PerformanceService의 메서드)에 @Transactional이 붙어 있어야 함
+    void deleteById_PerformanceId(Long performanceId);
 }
