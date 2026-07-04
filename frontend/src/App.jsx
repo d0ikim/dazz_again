@@ -32,13 +32,14 @@ import ScreenShowsList from './pages/dashboard/ScreenShowsList';
 
 import ScreenAdminHome from './pages/admin/ScreenAdminHome';
 import ScreenAdminVerify from './pages/admin/ScreenAdminVerify';
+import ScreenAdminMusicians from './pages/admin/ScreenAdminMusicians';
 import ScreenAdminVenues from './pages/admin/ScreenAdminVenues';
 import ScreenAdminConcerts from './pages/admin/ScreenAdminConcerts';
 
 import { api } from './api/client'; // mock 데이터 제거 — 실제 API 사용
 
 const MUSICIAN_ROUTES = new Set(['dashboard', 'profile-edit', 'shows-list', 'albums-list', 'graph-mine', 'resume-public']);
-const ADMIN_ROUTES = new Set(['admin-home', 'admin-verify', 'admin-venues', 'admin-concerts']);
+const ADMIN_ROUTES = new Set(['admin-home', 'admin-verify', 'admin-musicians', 'admin-venues', 'admin-concerts']);
 
 export default function App() {
   const parseHash = () => {
@@ -214,6 +215,7 @@ export default function App() {
 
       case 'admin-home': return <ScreenAdminHome navigate={navigate} />;
       case 'admin-verify': return <ScreenAdminVerify navigate={navigate} onToast={showToast} />;
+      case 'admin-musicians': return <ScreenAdminMusicians navigate={navigate} onToast={showToast} />;
       case 'admin-venues': return <ScreenAdminVenues navigate={navigate} onToast={showToast} />;
       case 'admin-concerts': return <ScreenAdminConcerts navigate={navigate} onToast={showToast} />;
 

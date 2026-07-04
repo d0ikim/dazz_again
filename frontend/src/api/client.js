@@ -49,6 +49,13 @@ export const api = {
   // 특정 뮤지션을 중심으로 함께 공연한 협연자 목록과 협연 횟수를 반환
   getMusicianGraph: (id) => request(`/api/musicians/${id}/graph`),
 
+  // ── 어드민 - 뮤지션 등록/수정 ────────────────────────────────────────────
+  // body: { stageName, realName, position, bio, snsUrl, profileImageUrl, sourceUrl }
+  createMusician: (body) => request('/api/admin/musicians', { method: 'POST', body: JSON.stringify(body) }),
+
+  // id: 수정할 뮤지션 번호 / body: 수정할 필드값 (전체 교체 방식)
+  updateMusician: (id, body) => request(`/api/admin/musicians/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+
   // ── 공연장 ──────────────────────────────────────────────────────────────
   // params가 없으면 URLSearchParams(undefined)가 빈 문자열('')을 반환하므로 안전하게 호출 가능
   getVenues: (params) => request(`/api/venues?${new URLSearchParams(params)}`),
