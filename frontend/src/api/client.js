@@ -69,6 +69,9 @@ export const api = {
   // musicianId: 특정 뮤지션이 출연한 공연 목록 조회
   getMusicianPerformances: (musicianId) => request(`/api/performances/musician/${musicianId}`),
 
+  // id: 공연 번호 — 해당 공연에 출연하는 뮤지션(라인업) 목록 조회 (수정 폼에서 현재 라인업 표시용)
+  getPerformanceLineup: (id) => request(`/api/performances/${id}/lineup`),
+
   // MUSICIAN 역할만 호출 가능 — 본인이 출연한 공연을 직접 추가
   // body: { venueId, startTime, title, genre, setInfo, setList, sourceUrl } 형태
   createPerformance: (body) => request('/api/performances', { method: 'POST', body: JSON.stringify(body) }),
@@ -102,7 +105,8 @@ export const api = {
   updateVenue: (id, body) => request(`/api/admin/venues/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
 
   // ── 어드민 - 공연 등록/수정 ──────────────────────────────────────────────
-  // body: { venueId, startTime, title, genre, setInfo, setList, cancelled, sourceUrl }
+  // body: { venueId, startTime, title, genre, setInfo, setList, cancelled, sourceUrl, musicianIds }
+  // musicianIds: 출연 뮤지션 id 배열 (선택) — 보내면 라인업 등록/교체, 아예 안 보내면(생략) 라인업 유지
   createAdminPerformance: (body) => request('/api/admin/performances', { method: 'POST', body: JSON.stringify(body) }),
 
   // id: 수정할 공연 번호
