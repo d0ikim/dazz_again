@@ -5,6 +5,7 @@ import com.dazz.again.global.auth.CustomOAuth2UserService;
 import com.dazz.again.global.auth.JwtFilter;
 import com.dazz.again.global.auth.OAuth2LoginSuccessHandler;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value; // application.yaml의 설정값을 필드에 주입하는 어노테이션
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;                  // HTTP 메서드(GET, PUT 등)를 상수로 제공하는 클래스
@@ -30,6 +31,11 @@ public class SecurityConfig {
     private final CustomOAuth2UserService customOAuth2UserService;
     private final OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler;
     private final JwtFilter jwtFilter;
+
+    // application.yaml의 frontend.url 값을 주입받음 (환경변수 FRONTEND_URL 또는 기본값 localhost:5173)
+    // @Value("${...}") : yaml의 설정 경로를 적으면 Spring이 그 값을 이 필드에 넣어줌
+    @Value("${frontend.url}")
+    private String frontendUrl;
 
     @Bean   // Spring은 객체를 직접 new로 안만들고, Spring Container가 대신 만들고 관리하는데, `Spring이 관리하는 객체`를 Bean이라고 부름."이 메서드가 반환하는 객체를 Spring이 빈으로 등록해서 관리해줘" 라는 뜻의 어노테이션
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -81,7 +87,9 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
         // 어떤 출처를 허용할지
-        config.setAllowedOrigins(List.of("http://localhost:5173"));
+        // localhost:5173 : 로컬 개발 중인 프론트 (항상 허용 — 배포 후에도 로컬에서 개발·테스트하기 위해)
+        // frontendUrl    : 배포된 프론트 주소 (환경변수로 주입. 로컬에선 기본값이 localhost:5173이라 중복돼도 문제없음)
+        config.setAllowedOrigins(List.of("http://localhost:5173", frontendUrl));
         // 어떤 HTTP메서드를 허용할지
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         // 어떤 요청헤더를 허용할지 (* = 전부)
