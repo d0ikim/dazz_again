@@ -28,3 +28,6 @@ ENTRYPOINT ["java", "-jar", "app.jar"]
 # 현재 이 Dockerfile은 환경변수 설정이 없음
 # docker run 할 때 -e 옵션으로 환경변수를 넘겨줘야 함
 # 예: docker run -e DB_PASSWORD=xxx -e JWT_SECRET=yyy app
+
+# Nginx 기본포트는 80
+EXPOSE 8080
