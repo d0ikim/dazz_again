@@ -65,4 +65,17 @@ public class Musician {
         if (snsUrl != null)          this.snsUrl          = snsUrl;
         if (profileImageUrl != null) this.profileImageUrl = profileImageUrl;
     }
+
+    // ADMIN이 뮤지션 정보를 수정할 때 호출하는 메서드 — Venue.update()와 동일하게 전달받은 값으로 전부 교체
+    // (본인 수정용 updateProfile()과 달리 null 유지 로직 없음 — 관리자 화면은 항상 전체 필드를 다시 보내기 때문)
+    public void adminUpdate(String stageName, String realName, String position,
+                            String bio, String snsUrl, String profileImageUrl, String sourceUrl) {
+        this.stageName = stageName;
+        this.realName = realName;
+        this.position = position;
+        this.bio = bio;
+        this.snsUrl = snsUrl;
+        this.profileImageUrl = profileImageUrl;
+        this.sourceUrl = sourceUrl;
+    }
 }

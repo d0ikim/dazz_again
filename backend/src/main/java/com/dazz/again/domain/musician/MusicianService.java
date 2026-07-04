@@ -83,4 +83,39 @@ public class MusicianService {
         // 3. center + edges를 묶어서 GraphResponse로 반환
         return new GraphResponse(center, edges);    // 두 Repository의 결과를 조합(Service레이어가 존재하는 이유 - "어떤 데이터를 어떻게 조합할지")
     }
+
+    // ADMIN 전용 — 뮤지션 등록 — 요청 DTO를 받아 Musician 엔티티로 변환 후 저장
+    // sourceType은 "ADMIN_CURATED" 고정, userId는 주인 없는 프로필이므로 null 고정
+    @Transactional // DB에 저장하므로 읽기 전용 해제
+    public Musician createByAdmin(MusicianRequest request) {
+        Musician musician = Musician.builder()
+                .stageName(request.getStageName())
+                .realName(request.getRealName())
+                .position(request.getPosition())
+                .bio(request.getBio())
+                .snsUrl(request.getSnsUrl())
+                .profileImageUrl(request.getProfileImageUrl())
+                .sourceType("ADMIN_CURATED")
+                .sourceUrl(request.getSourceUrl())
+                .build();
+        return musicianRepository.save(musician); // INSERT INTO musician ...
+    }
+
+    // ADMIN 전용 — 뮤지션 수정 — id로 기존 뮤지션을 찾아 adminUpdate() 호출 (전체 필드 교체)
+    @Transactional // DB를 변경하므로 읽기 전용 해제
+    public Musician updateByAdmin(Long id, MusicianRequest request) {
+        Musician musician = musicianRepository.findById(id)
+                .orElseThrow(() -> new NoSuchElementException("존재하지 않는 뮤지션입니다. id=" + id));
+
+        musician.adminUpdate(
+                request.getStageName(),
+                request.getRealName(),
+                request.getPosition(),
+                request.getBio(),
+                request.getSnsUrl(),
+                request.getProfileImageUrl(),
+                request.getSourceUrl()
+        );
+        return musician;
+    }
 }

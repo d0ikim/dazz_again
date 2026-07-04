@@ -30,7 +30,7 @@
 - **뮤지션 인맥지도** — 함께 공연한 협연자와 협연 횟수를 그래프로 시각화
 - **카카오 소셜 로그인 + JWT 인증** — GENERAL / MUSICIAN / ADMIN 3가지 유저 역할
 - **뮤지션 인증 플로우** — 일반 유저의 뮤지션 인증 신청 → 어드민 승인/거부
-- **어드민 관리** — 공연장·공연 등록/수정, 뮤지션 인증 대기 목록 관리
+- **어드민 관리** — 뮤지션·공연장·공연 등록/수정, 뮤지션 인증 대기 목록 관리
 - **공연장 좌표 크롤링** — Kakao Local API로 기존 공연장 주소를 위도/경도로 변환해 저장
 
 ---
@@ -55,6 +55,8 @@
 | GET | `/api/musicians/search?type=position&keyword=` | 악기 검색 (필터 버튼) | 불필요 | ✓ |
 | GET | `/api/musicians/{id}/graph` | 뮤지션 인맥지도 조회 | 불필요 | ✓ |
 | PUT | `/api/musicians/me` | 내 뮤지션 프로필 수정 | 필요 (MUSICIAN) | ✓ |
+| POST | `/api/admin/musicians` | 뮤지션 등록 | 필요 (ADMIN) | ✓ |
+| PUT | `/api/admin/musicians/{id}` | 뮤지션 수정 | 필요 (ADMIN) | ✓ |
 
 ### 뮤지션 인증 신청
 | Method | URL | 설명 | 인증 | 프론트 |
