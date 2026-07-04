@@ -29,6 +29,31 @@ jobs:
     # runs-on: 어디서 실행할 것인가? (ubuntu-latest = 리눅스 가상 서버)
     runs-on: ubuntu-latest
 
+    # services: 이 job이 실행되는 동안 함께 띄워줄 부가 컨테이너
+    # application.yaml이 jdbc:postgresql://localhost:5432/... 로 DB에 접속하는데,
+    # 지금까지는 이 job에 PostgreSQL 자체가 없어서 @SpringBootTest(contextLoads)가
+    # DB 연결에 실패해 빌드가 계속 실패했음 → 아래 postgres 컨테이너로 해결
+    services:
+      postgres:
+        image: postgres:16
+        # 아래 3개 값은 밑의 "Build and run tests with Gradle" 단계의
+        # DB_DATABASE / DB_USER / DB_PASSWORD 환경변수와 반드시 같아야 함
+        env:
+          POSTGRES_DB: dazz
+          POSTGRES_USER: dazz_admin
+          POSTGRES_PASSWORD: test_password
+        # ports: 컨테이너의 5432 포트를 러너(가상 서버)의 5432 포트로 그대로 열어줌
+        # → job의 다른 step에서는 "localhost:5432"로 접속 가능해짐
+        ports:
+          - 5432:5432
+        # options: 컨테이너가 완전히 켜질 때까지 기다리는 헬스체크
+        # (Postgres는 켜지는 데 몇 초 걸리므로, 준비 안 된 상태에서 바로 접속 시도하면 실패함)
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     # 작업이 실행할 단계들 (steps: 1단계, 2단계, ...)
     steps:
       # 1단계: 코드 다운로드
