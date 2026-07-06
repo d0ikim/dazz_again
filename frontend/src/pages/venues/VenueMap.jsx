@@ -11,12 +11,29 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
-// 마커 위에 표시할 인포윈도우(말풍선) HTML 내용을 만듦
-function buildInfoWindowContent(venue) {
+// URL을 href="..." 속성 안에 넣기 전에 따옴표를 이스케이프 (속성이 중간에 끊기는 것 방지)
+function escapeAttr(url) {
+  return String(url ?? '').replace(/"/g, '&quot;');
+}
+
+// 마커 위에 표시할 인포윈도우(말풍선) HTML 내용을 만듦 (export: 테스트에서 단독 확인 가능하도록)
+export function buildInfoWindowContent(venue) {
+  // 홈페이지 URL이 등록된 공연장만 말풍선에 링크 표시 (클릭 시 새 탭으로 열림)
+  const homepageLink = venue.homepageUrl
+    ? `<a href="${escapeAttr(venue.homepageUrl)}" target="_blank" rel="noopener noreferrer"
+          style="display:inline-block;margin-top:6px;font-size:12px;font-weight:600;color:var(--wine);text-decoration:none;">
+         홈페이지 방문 ↗
+       </a>`
+    : '';
+
+  // width를 고정(200px)하고 줄바꿈을 허용해야 긴 주소가 말풍선 밖으로 삐져나가지 않음
+  // (max-width만 주면 카카오맵이 말풍선 크기를 잘못 계산해 텍스트가 넘칠 수 있음)
   return `
-    <div style="padding:8px 12px;min-width:150px;max-width:220px;font-family:'Noto Sans KR',sans-serif;">
+    <div style="width:200px;box-sizing:border-box;padding:10px 12px;font-family:'Pretendard','Noto Sans KR',sans-serif;
+                white-space:normal;word-break:keep-all;overflow-wrap:break-word;line-height:1.45;">
       <strong style="font-size:13px;">${escapeHtml(venue.name)}</strong>
       <div style="margin-top:2px;font-size:12px;color:#888;">${escapeHtml(venue.location)}</div>
+      ${homepageLink}
     </div>
   `;
 }
@@ -25,6 +42,7 @@ export default function VenueMap({ venues = [], selected, onSelect }) {
   const boxRef = useRef(null);   // 카카오맵이 실제로 그려질 div DOM 요소를 가리킴
   const mapRef = useRef(null);   // 생성된 카카오 지도 객체 (한 번만 만들고 계속 재사용)
   const markersRef = useRef([]); // 지도 위에 그려둔 마커 목록 (venues가 바뀔 때 지우고 다시 그리기 위해 보관)
+  const pinnedRef = useRef(null); // 클릭으로 "고정"된 말풍선 — 고정된 동안엔 마우스가 떠나도 닫지 않음 (안의 링크를 클릭할 수 있도록)
   const [ready, setReady] = useState(false); // 카카오맵 SDK 로드 + 지도 생성이 끝났는지 여부
 
   // 1) 컴포넌트가 처음 화면에 나타날 때 딱 한 번 — 카카오맵 SDK로 지도를 생성
@@ -42,6 +60,15 @@ export default function VenueMap({ venues = [], selected, onSelect }) {
         center: new window.kakao.maps.LatLng(SEOUL_CENTER.lat, SEOUL_CENTER.lng),
         level: 7, // 지도 확대 레벨 — 숫자가 작을수록 확대됨 (1~14)
       });
+
+      // 마커가 아닌 지도 빈 곳을 클릭하면, 고정해둔 말풍선을 닫음
+      window.kakao.maps.event.addListener(mapRef.current, 'click', () => {
+        if (pinnedRef.current) {
+          pinnedRef.current.close();
+          pinnedRef.current = null;
+        }
+      });
+
       setReady(true); // 아래 useEffect들이 이제 지도를 다뤄도 된다는 신호
     });
   }, []);
@@ -56,6 +83,7 @@ export default function VenueMap({ venues = [], selected, onSelect }) {
       marker.setMap(null);
     });
     markersRef.current = [];
+    pinnedRef.current = null; // 마커를 다시 그리므로 고정 상태도 초기화
 
     // 좌표값이 있는 공연장만 필터링 (아직 좌표를 못 구한 곳은 지도에 표시할 수 없음)
     const withCoords = venues.filter((v) => v.latitude != null && v.longitude != null);
@@ -72,11 +100,17 @@ export default function VenueMap({ venues = [], selected, onSelect }) {
       });
 
       window.kakao.maps.event.addListener(marker, 'mouseover', () => infowindow.open(mapRef.current, marker));
-      window.kakao.maps.event.addListener(marker, 'mouseout', () => infowindow.close());
+      // 마우스가 마커를 떠나면 닫되, 클릭으로 고정된 말풍선은 그대로 둠 (링크 클릭 기회 보장)
+      window.kakao.maps.event.addListener(marker, 'mouseout', () => {
+        if (pinnedRef.current !== infowindow) infowindow.close();
+      });
 
-      // 마커 클릭 시 말풍선도 띄우고, 부모 컴포넌트(ScreenVenues)에게 선택된 공연장 id를 알려줌
+      // 마커 클릭(모바일에선 탭) 시:
+      // ① 이전에 고정된 말풍선이 있으면 닫고 ② 이 말풍선을 열어서 고정 ③ 부모에게 선택된 공연장 id 전달
       window.kakao.maps.event.addListener(marker, 'click', () => {
+        if (pinnedRef.current && pinnedRef.current !== infowindow) pinnedRef.current.close();
         infowindow.open(mapRef.current, marker);
+        pinnedRef.current = infowindow;
         onSelect(v.id);
       });
 

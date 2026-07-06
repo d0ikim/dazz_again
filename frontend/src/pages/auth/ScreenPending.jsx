@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'; // useEffect: 내 신청 정보 로
 import Icon from '../../components/Icon';   // 아이콘
 import { api } from '../../api/client';     // 백엔드 API 호출 함수 모음
 
-export default function ScreenPending({ navigate, auth }) {
+export default function ScreenPending({ navigate }) { // auth prop 제거 — user_id 표시를 없애면서 더 이상 필요 없음
   // req: 내 인증 신청 단건 정보 — GET /api/verify/musician/me
   const [req, setReq] = useState(null);
 
@@ -33,8 +33,8 @@ export default function ScreenPending({ navigate, auth }) {
                 <div className="rr"><span>신청 일시</span><b className="mono">{req.requestedAt?.slice(0, 10)}</b></div>
               </>
             )}
-            {/* userId는 auth에서 바로 가져옴 */}
-            <div className="rr"><span>user_id</span><b className="mono">{auth.userId}</b></div>
+            {/* user_id는 내부 DB 식별자라 사용자에게 보여줄 필요 없음 — 동료 피드백으로 제거.
+                문의 대응용 식별자는 위의 "요청 ID"로 충분 */}
             <div className="rr"><span>상태</span><b style={{ color: 'var(--wine)' }}>PENDING · 승인 대기</b></div>
           </div>
           <div className="row" style={{ gap: 10, marginTop: 22 }}>

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import Icon from '../../components/Icon';
 import PresetPicker from './PresetPicker';
+import { isValidUrl, isValidHandle } from '../../utils/validators'; // URL/핸들 형식 검사
 
 export default function ScreenProfileEdit({ me, navigate, onUpdate, onToast }) {
   const [form, setForm] = useState({
@@ -16,6 +17,14 @@ export default function ScreenProfileEdit({ me, navigate, onUpdate, onToast }) {
   });
 
   const set = (k, v) => setForm((p) => ({ ...p, [k]: v }));
+
+  // 링크 필드 형식 검사 — 틀린 필드에만 오류 메시지를 담음 (통과하면 null)
+  const linkErrors = {
+    instagram: isValidHandle(form.instagram) ? null : '@ 뒤의 아이디만 입력해주세요 (예: dazz_pianist)',
+    youtube: isValidHandle(form.youtube) ? null : '@ 뒤의 채널명만 입력해주세요 (예: dazzjazz)',
+    website: isValidUrl(form.website) ? null : 'URL 형식이 아니에요 (예: example.com 또는 https://example.com)',
+  };
+  const linksOk = !linkErrors.instagram && !linkErrors.youtube && !linkErrors.website;
 
   const save = () => {
     onUpdate && onUpdate(form);
@@ -61,14 +70,18 @@ export default function ScreenProfileEdit({ me, navigate, onUpdate, onToast }) {
             <div className="field">
               <label className="label">Instagram</label>
               <div className="prefix"><span>@</span><input type="text" value={form.instagram} onChange={(e) => set('instagram', e.target.value)} /></div>
+              {/* 형식이 틀렸을 때만 오류 안내 표시 */}
+              {linkErrors.instagram && <span className="err">{linkErrors.instagram}</span>}
             </div>
             <div className="field">
               <label className="label">YouTube</label>
               <div className="prefix"><span>@</span><input type="text" value={form.youtube} onChange={(e) => set('youtube', e.target.value)} /></div>
+              {linkErrors.youtube && <span className="err">{linkErrors.youtube}</span>}
             </div>
             <div className="field">
               <label className="label">웹사이트</label>
               <div className="prefix"><span><Icon name="globe" size={13} /></span><input type="text" value={form.website} onChange={(e) => set('website', e.target.value)} /></div>
+              {linkErrors.website && <span className="err">{linkErrors.website}</span>}
             </div>
           </div>
         </div>
@@ -80,7 +93,8 @@ export default function ScreenProfileEdit({ me, navigate, onUpdate, onToast }) {
 
         <div className="row" style={{ justifyContent: 'flex-end', gap: 10, marginTop: 24 }}>
           <button className="btn ghost" onClick={() => navigate('dashboard')}>취소</button>
-          <button className="btn primary" onClick={save}><Icon name="check" size={16} stroke={2.5} /> 저장</button>
+          {/* 링크 형식 오류가 있으면 저장 버튼 비활성화 */}
+          <button className="btn primary" onClick={save} disabled={!linksOk}><Icon name="check" size={16} stroke={2.5} /> 저장</button>
         </div>
       </div>
     </div>

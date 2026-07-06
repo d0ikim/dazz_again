@@ -12,6 +12,7 @@ import org.springframework.security.core.context.SecurityContextHolder; // 현�
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;   // HTTP PUT 메서드 매핑 어노테이션
+import jakarta.validation.Valid;                             // @RequestBody DTO에 붙은 검증 어노테이션(@Pattern 등)을 실제로 실행시키는 스위치
 import org.springframework.web.bind.annotation.RequestBody;  // 요청 body의 JSON을 Java 객체로 변환하는 어노테이션
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -38,7 +39,7 @@ public class MusicianController {
     @ApiResponse(responseCode = "401", description = "토큰 없음 또는 만료")
     @ApiResponse(responseCode = "403", description = "MUSICIAN 역할이 아님")
     @PutMapping("/me")
-    public ResponseEntity<Musician> updateMyProfile(@RequestBody MusicianUpdateRequest request) {
+    public ResponseEntity<Musician> updateMyProfile(@Valid @RequestBody MusicianUpdateRequest request) {
         // JwtFilter가 SecurityContextHolder에 저장한 userId를 꺼냄
         Long userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         return ResponseEntity.ok(musicianService.updateMyProfile(userId, request));
