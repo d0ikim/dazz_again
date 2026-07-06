@@ -45,6 +45,7 @@ export default function Icon({ name, size = 18, color = 'currentColor', stroke =
     case 'logout': return <svg {...props}><path d="M15 4h3a2 2 0 012 2v12a2 2 0 01-2 2h-3M10 17l-5-5 5-5M5 12h11" /></svg>;
     case 'chat': return <svg {...props}><path d="M12 4C7 4 3 7.1 3 11c0 2.4 1.6 4.6 4 5.9-.2.9-.7 2.3-1.3 3.1-.2.3 0 .6.4.5 1.8-.4 3.4-1.3 4.3-2 .5.1 1 .1 1.6.1 5 0 9-3.1 9-7s-4-7-9-7z" fill="currentColor" stroke="none" /></svg>;
     case 'lock': return <svg {...props}><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 018 0v3" /></svg>;
+    case 'menu': return <svg {...props}><path d="M4 6h16M4 12h16M4 18h16" /></svg>; // 햄버거(☰) — 모바일 메뉴 버튼
     default: return <svg {...props}><circle cx="12" cy="12" r="9" /></svg>;
   }
 }
