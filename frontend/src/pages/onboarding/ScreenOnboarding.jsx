@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import Icon from '../../components/Icon';
+import { isValidUrl, isValidHandle } from '../../utils/validators'; // URL/핸들 형식 검사
 
 const INSTRUMENTS = ['Piano', 'Bass', 'Drums', 'Guitar', 'Sax', 'Vocal', 'Trumpet', 'Trombone', 'Violin', 'Vibraphone', 'Percussion', 'Other'];
 
@@ -19,6 +20,15 @@ export default function ScreenOnboarding({ navigate, onSubmitRequest }) {
   const next = () => setStep((s) => Math.min(s + 1, STEPS.length - 1));
   const prev = () => setStep((s) => Math.max(s - 1, 0));
   const submit = () => onSubmitRequest({ kind: 'new', ...form });
+
+  // 링크 단계(step 3) 형식 검사 — 틀린 필드에만 오류 메시지를 담음 (통과하면 null)
+  const linkErrors = {
+    instagram: isValidHandle(form.instagram) ? null : '@ 뒤의 아이디만 입력해주세요 (예: dazz_pianist)',
+    youtube: isValidHandle(form.youtube) ? null : '@ 뒤의 채널명만 입력해주세요 (예: dazzjazz)',
+    website: isValidUrl(form.website) ? null : 'URL 형식이 아니에요 (예: example.com 또는 https://example.com)',
+  };
+  // 세 필드 모두 통과해야 다음 단계로 진행 가능
+  const linksOk = !linkErrors.instagram && !linkErrors.youtube && !linkErrors.website;
 
   return (
     <div className="main" style={{ background: 'var(--paper)' }}>
@@ -71,14 +81,18 @@ export default function ScreenOnboarding({ navigate, onSubmitRequest }) {
               <div className="field">
                 <label className="label">Instagram</label>
                 <div className="prefix"><span>@</span><input type="text" placeholder="handle" value={form.instagram} onChange={(e) => set('instagram', e.target.value)} /></div>
+                {/* 형식이 틀렸을 때만 오류 안내 표시 */}
+                {linkErrors.instagram && <span className="err">{linkErrors.instagram}</span>}
               </div>
               <div className="field">
                 <label className="label">YouTube</label>
                 <div className="prefix"><span>@</span><input type="text" placeholder="channel" value={form.youtube} onChange={(e) => set('youtube', e.target.value)} /></div>
+                {linkErrors.youtube && <span className="err">{linkErrors.youtube}</span>}
               </div>
               <div className="field">
                 <label className="label">개인 웹사이트</label>
                 <div className="prefix"><span><Icon name="globe" size={13} /></span><input type="text" placeholder="example.com" value={form.website} onChange={(e) => set('website', e.target.value)} /></div>
+                {linkErrors.website && <span className="err">{linkErrors.website}</span>}
               </div>
             </div>
           )}
@@ -98,8 +112,9 @@ export default function ScreenOnboarding({ navigate, onSubmitRequest }) {
 
         <div className="row" style={{ justifyContent: 'space-between', marginTop: 18 }}>
           <button className="btn ghost" onClick={prev} disabled={step === 0}><Icon name="arrow-left" size={15} /> 이전</button>
+          {/* 다음 버튼: 악기 미선택(step 0) 또는 링크 형식 오류(step 3)면 비활성화 */}
           {step < STEPS.length - 1 ? (
-            <button className="btn primary" onClick={next} disabled={step === 0 && !form.instrument}>다음 <Icon name="arrow-right" size={15} /></button>
+            <button className="btn primary" onClick={next} disabled={(step === 0 && !form.instrument) || (step === 3 && !linksOk)}>다음 <Icon name="arrow-right" size={15} /></button>
           ) : (
             <button className="btn primary" onClick={submit} disabled={!form.evidence}>
               <Icon name="shield" size={16} /> 인증 신청하기
