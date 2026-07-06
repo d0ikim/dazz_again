@@ -519,14 +519,6 @@ button.pill:hover { opacity: 0.85; }
 .cc-body { padding: 16px 18px; flex: 1; display: flex; flex-direction: column; }
 .cc-lineup { margin-top: auto; display: flex; align-items: center; gap: 10px; padding-top: 12px; border-top: 1px solid var(--line); }
 
-.concert-hero { display: flex; gap: 22px; align-items: center; padding: 26px 30px; }
-.concert-hero .ch-date {
-  flex: 0 0 auto; width: 92px; text-align: center;
-  background: var(--wine-soft); border: 1px solid var(--wine-line); border-radius: 12px; padding: 14px 8px;
-}
-.concert-hero .ch-date b { display: block; font-family: 'Noto Serif KR', serif; font-size: 40px; font-weight: 900; color: var(--wine); line-height: 1; margin: 4px 0; }
-.concert-hero .ch-date span { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--wine); display: block; }
-
 /* ─── Admin ───────────────────────────────────────────── */
 .sidebar.admin a .count {
   font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600;
@@ -901,11 +893,47 @@ button.pill:hover { opacity: 0.85; }
     background: rgba(20, 14, 12, 0.45); z-index: 55;
   }
 
-  /* ── 본문 여백·타이포 축소 ── */
+  /* ── 본문 여백·타이포 ── */
   .main .pad { padding: 20px 16px; }
   .h1 { font-size: 28px; }
   .h2 { font-size: 22px; }
-  .lead { font-size: 15px; }
+  /* 긴 영문 단어(밴드명 등)가 포함된 제목이 화면 밖으로 삐져나가지 않게 강제 줄바꿈 */
+  .h1, .h2, .h3 { overflow-wrap: anywhere; }
+  .lead { font-size: 16px; }
+  /* 데스크톱 기준(14px)은 폰에서 너무 작음 — 모바일 기본 글자를 16px로 키움 */
+  body { font-size: 16px; }
+
+  /* ── 터치 크기 확대 ──
+     iOS 휴먼 인터페이스 가이드라인의 최소 터치 영역은 44px.
+     데스크톱용 28~36px 버튼은 폰에서 누르기 어려우므로 전부 키운다 */
+  .btn { height: 46px; padding: 0 18px; font-size: 15px; border-radius: 8px; }
+  .btn.lg { height: 50px; font-size: 16px; }
+  .btn.sm { height: 40px; padding: 0 14px; font-size: 14px; }
+  .btn.icon { width: 44px; height: 44px; }
+  .chip { height: 40px; padding: 0 16px; font-size: 15px; }
+  .chip.sm { height: 34px; font-size: 13px; }
+  .tabs button { font-size: 15px; padding: 14px 0; }
+  .pill { height: 26px; font-size: 13px; }
+  /* .pill.lg는 뮤지션 목록의 악기 필터 등 주요 터치 대상이라 더 크게 */
+  .pill.lg { height: 38px; font-size: 14px; padding: 0 16px; }
+
+  /* ── 입력창 확대 ──
+     폰트가 16px 미만인 input에 포커스하면 iOS Safari가 화면을 강제 확대하므로
+     반드시 16px 이상으로 키운다 */
+  .field input[type=text], .field input[type=date], .field input[type=email],
+  .field input[type=url], .field textarea, .field select {
+    font-size: 16px; padding: 12px 14px;
+  }
+  .field label { font-size: 14px; }
+  .field .help { font-size: 13px; }
+  .field .prefix span { font-size: 14px; }
+
+  /* ── 드로어 메뉴 링크: 손가락으로 누르기 좋게 ── */
+  .sidebar a { font-size: 16px; padding: 13px 16px; }
+  .sidebar .section { font-size: 12px; }
+
+  /* ── 표·기타 텍스트 ── */
+  .admin-table { font-size: 14px; }
 
   /* ── 아직 1열로 안 바뀐 그리드들 전환 ── */
   .form-grid { grid-template-columns: 1fr; }
