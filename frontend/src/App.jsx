@@ -207,7 +207,7 @@ export default function App() {
       case 'become-musician': return <ScreenBecomeMusician navigate={navigate} auth={auth} />;
       case 'claim-existing': return <ScreenClaimExisting navigate={navigate} onSubmitRequest={handleVerifyRequest} />;
       case 'onboarding': return <ScreenOnboarding navigate={navigate} onSubmitRequest={handleVerifyRequest} />;
-      case 'pending': return <ScreenPending navigate={navigate} auth={auth} />;
+      case 'pending': return <ScreenPending navigate={navigate} />;
 
       case 'dashboard': return <ScreenDashboard navigate={navigate} me={me} />;
       case 'profile-edit': return <ScreenProfileEdit me={me} navigate={navigate} onUpdate={(f) => setMe((p) => ({ ...p, ...f }))} onToast={showToast} />;
