@@ -314,6 +314,7 @@ button.pill:hover { opacity: 0.85; }
   position: relative;
   overflow: hidden;
 }
+.hero-title { font-size: 44px; } /* 모바일에서는 아래 768px 미디어 쿼리가 줄임 */
 .hero .stamp {
   position: absolute; right: -40px; top: -40px;
   width: 200px; height: 200px; border-radius: 999px;
@@ -899,6 +900,9 @@ button.pill:hover { opacity: 0.85; }
   .h2 { font-size: 22px; }
   /* 긴 영문 단어(밴드명 등)가 포함된 제목이 화면 밖으로 삐져나가지 않게 강제 줄바꿈 */
   .h1, .h2, .h3 { overflow-wrap: anywhere; }
+  /* 히어로 제목·여백 축소 — 히어로가 화면을 덜 차지해 목록까지 스크롤이 짧아짐 */
+  .hero { padding: 32px 24px; }
+  .hero-title { font-size: 30px; }
   .lead { font-size: 16px; }
   /* 데스크톱 기준(14px)은 폰에서 너무 작음 — 모바일 기본 글자를 16px로 키움 */
   body { font-size: 16px; }

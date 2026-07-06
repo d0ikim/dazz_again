@@ -1,5 +1,5 @@
 // 뮤지션 디렉토리 페이지 — 서비스 메인 화면이자 뮤지션 목록을 보여주는 화면
-import { useState, useEffect } from 'react'; // useState: 상태 관리 / useEffect: 마운트 시 API 호출
+import { useState, useEffect, useRef } from 'react'; // useState: 상태 관리 / useEffect: 마운트 시 API 호출 / useRef: 스크롤 기준점·마운트 여부 기억
 import Icon from '../../components/Icon';     // 아이콘 컴포넌트
 import { api } from '../../api/client';       // 백엔드 API 호출 함수 모음
 
@@ -18,6 +18,23 @@ export default function ScreenDirectory({ navigate, auth, onLoginClick }) {
 
   // filter: 선택된 악기 필터 ('all' 또는 'Piano' 등)
   const [filter, setFilter] = useState('all');
+
+  // 필터 변경 시 스크롤을 맞출 기준점 (디렉토리 헤더 div를 가리킴)
+  const listTopRef = useRef(null);
+  // 첫 렌더인지 여부 — 페이지에 처음 들어왔을 때는 스크롤을 건드리면 안 되므로 구분
+  const didMountRef = useRef(false);
+
+  // 악기 필터를 바꾸면 목록 길이가 확 줄면서 페이지 높이가 짧아지고,
+  // 브라우저가 스크롤 위치를 잃어 화면이 최상단(히어로)으로 튀는 문제가 있었음.
+  // → 필터가 바뀔 때마다 "디렉토리 헤더"가 화면 상단에 오도록 스크롤을 고정해서
+  //   히어로를 다시 지나칠 필요 없이 바로 목록을 볼 수 있게 함
+  useEffect(() => {
+    if (!didMountRef.current) {
+      didMountRef.current = true; // 첫 렌더는 건너뜀 (페이지 진입 시에는 맨 위부터 보여야 함)
+      return;
+    }
+    listTopRef.current?.scrollIntoView({ block: 'start' });
+  }, [filter]); // filter가 바뀔 때만 실행 (검색어 입력 중에는 스크롤하지 않음)
 
   // 마운트 시 전체 뮤지션 목록을 백엔드에서 불러옴
   useEffect(() => {
@@ -55,7 +72,8 @@ export default function ScreenDirectory({ navigate, auth, onLoginClick }) {
         <div className="hero">
           <div className="stamp" />
           <div className="eyebrow" style={{ marginBottom: 10 }}>K-JAZZ INSIGHT NAVIGATOR · MVP</div>
-          <h1 className="h1 serif" style={{ fontSize: 44, marginBottom: 12, maxWidth: 720 }}>
+          {/* 제목 크기는 인라인이 아니라 CSS(.hero-title)로 지정 — 모바일 미디어 쿼리로 줄일 수 있게 */}
+          <h1 className="h1 serif hero-title" style={{ marginBottom: 12, maxWidth: 720 }}>
             한국재즈 뮤지션을<br />뮤지션이 직접 정리합니다.
           </h1>
           <p className="lead" style={{ maxWidth: 560, marginBottom: 20 }}>
@@ -93,8 +111,8 @@ export default function ScreenDirectory({ navigate, auth, onLoginClick }) {
           </div>
         </div>
 
-        {/* 디렉토리 헤더 — 뮤지션 수 + 검색창 */}
-        <div className="row" style={{ justifyContent: 'space-between', marginBottom: 14, alignItems: 'flex-end', flexWrap: 'wrap', gap: 12 }}>
+        {/* 디렉토리 헤더 — 뮤지션 수 + 검색창 (ref: 필터 변경 시 이 위치로 스크롤) */}
+        <div ref={listTopRef} className="row" style={{ justifyContent: 'space-between', marginBottom: 14, alignItems: 'flex-end', flexWrap: 'wrap', gap: 12, scrollMarginTop: 68 }}>
           <div>
             <div className="eyebrow" style={{ marginBottom: 4 }}>뮤지션 디렉토리</div>
             <h2 className="h2 serif" style={{ margin: 0 }}>활동중인 뮤지션 {list.length}명</h2>
