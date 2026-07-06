@@ -4,6 +4,7 @@ import './styles/global.css';
 import Topbar from './components/Topbar';
 import Sidebar from './components/Sidebar';
 import AdminSidebar from './components/AdminSidebar';
+import MobileNav from './components/MobileNav'; // 모바일 전용 내비게이션 드로어
 import Toast from './components/Toast';
 
 import KakaoLoginModal from './pages/auth/KakaoLoginModal';
@@ -57,6 +58,8 @@ export default function App() {
   // me: 로그인한 유저 정보 (null = 비로그인 or 아직 로드 중)
   // 로그인 후: { id, nickname, role, musicianId?, stageName?, position?, bio?, snsUrl? }
   const [me, setMe] = useState(null);
+  // menuOpen: 모바일 드로어(햄버거 메뉴) 열림 여부 — PC 화면에서는 사용되지 않음
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const route = routeState.route;
   const routeParams = routeState.params;
@@ -125,6 +128,7 @@ export default function App() {
       : '#' + r;
     history.pushState({ r, params }, '', encoded);
     setRouteState({ route: r, params });
+    setMenuOpen(false); // 화면 이동 시 모바일 드로어는 항상 닫는다
     window.scrollTo(0, 0);
   };
 
@@ -235,20 +239,29 @@ export default function App() {
         auth={auth}
         onLoginClick={openLogin}
         onLogout={handleLogout}
+        onMenuClick={() => setMenuOpen((o) => !o)} // 햄버거 버튼: 드로어 열기/닫기 토글
       />
 
       {useLayout ? (
         <>
+          {/* 대시보드/관리자 화면: 사이드바가 모바일에서는 드로어(mobileOpen)로 동작 */}
           {layoutAdmin ? (
-            <AdminSidebar route={route} navigate={navigate} onLogout={handleLogout} />
+            <AdminSidebar route={route} navigate={navigate} onLogout={handleLogout} mobileOpen={menuOpen} />
           ) : (
-            <Sidebar route={route} navigate={navigate} me={me} onLogout={handleLogout} />
+            <Sidebar route={route} navigate={navigate} me={me} onLogout={handleLogout} mobileOpen={menuOpen} />
           )}
           <main>{renderContent()}</main>
         </>
       ) : (
-        renderContent()
+        <>
+          {/* 일반 화면: 모바일 전용 메뉴 드로어 (PC에서는 CSS로 숨겨짐) */}
+          <MobileNav open={menuOpen} route={route} navigate={navigate} auth={auth} onLoginClick={(reason) => { setMenuOpen(false); openLogin(reason); }} />
+          {renderContent()}
+        </>
       )}
+
+      {/* 드로어가 열려 있을 때 본문을 어둡게 덮는 배경 — 탭하면 드로어 닫힘 */}
+      {menuOpen && <div className="drawer-scrim" onClick={() => setMenuOpen(false)} />}
 
       {toast && <Toast msg={toast.msg} kind={toast.kind} />}
       {loginModal && <KakaoLoginModal onClose={() => setLoginModal(false)} onLogin={handleLogin} reason={loginReason} />}

@@ -1,7 +1,8 @@
 import Avatar from './Avatar';
 import Icon from './Icon';
 
-export default function Sidebar({ route, navigate, me, onLogout }) {
+// mobileOpen: 모바일 드로어 열림 여부 — true면 .open 클래스가 붙어 슬라이드 인 (PC에서는 영향 없음)
+export default function Sidebar({ route, navigate, me, onLogout, mobileOpen }) {
   const items = [
     ['dashboard', 'home', '대시보드'],
     ['profile-edit', 'user', '내 프로필'],
@@ -10,7 +11,7 @@ export default function Sidebar({ route, navigate, me, onLogout }) {
     ['graph-mine', 'graph', '관계도'],
   ];
   return (
-    <div className="sidebar">
+    <div className={`sidebar ${mobileOpen ? 'open' : ''}`}>
       <div className="section">관리</div>
       {items.map(([r, ico, label]) => (
         <a key={r} className={route === r ? 'active' : ''} onClick={() => navigate(r)}>

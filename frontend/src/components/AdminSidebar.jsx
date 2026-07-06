@@ -4,7 +4,8 @@ import Avatar from './Avatar';               // 이니셜 아바타
 import Icon from './Icon';                   // 아이콘
 import { api } from '../api/client';         // 백엔드 API 호출 함수 모음
 
-export default function AdminSidebar({ route, navigate, onLogout }) {
+// mobileOpen: 모바일 드로어 열림 여부 — true면 .open 클래스가 붙어 슬라이드 인 (PC에서는 영향 없음)
+export default function AdminSidebar({ route, navigate, onLogout, mobileOpen }) {
   // 각 항목의 건수 — 실제 API 데이터 기반
   const [pendingCount, setPendingCount] = useState(null);   // 인증 대기
   const [musicianCount, setMusicianCount] = useState(null); // 뮤지션 수
@@ -28,7 +29,7 @@ export default function AdminSidebar({ route, navigate, onLogout }) {
   ];
 
   return (
-    <div className="sidebar admin">
+    <div className={`sidebar admin ${mobileOpen ? 'open' : ''}`}>
       <div className="section">관리자 콘솔</div>
       {items.map(([r, ico, label, count]) => (
         <a key={r} className={route === r ? 'active' : ''} onClick={() => navigate(r)}>
