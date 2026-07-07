@@ -59,3 +59,6 @@ __pycache__/
 # 디자인 참고 자료 (git에 올리지 않음)
 design_handoff/
 img.png
+
+# Claude Code 로컬 설정 폴더 (개인 환경 설정, git에 올리지 않음)
+.claude/
