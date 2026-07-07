@@ -40,12 +40,15 @@ import re
 # ==================== 환경변수 로드 (설정 파일에서 정보 읽기) ====================
 
 # backend/.env 파일에서 DB 접속 정보를 읽기
-# Path(__file__).parent.parent = 크롤러 폴더의 상위 = 프로젝트 루트
-backend_env_path = Path(__file__).parent.parent / 'backend' / '.env'
+# 이 파일은 crawler/venue/ 안에 있으므로 프로젝트 루트까지 세 단계 올라가야 한다.
+# Path(__file__).parent               = venue 폴더
+# Path(__file__).parent.parent        = crawler 폴더
+# Path(__file__).parent.parent.parent = 프로젝트 루트
+backend_env_path = Path(__file__).parent.parent.parent / 'backend' / '.env'
 load_dotenv(backend_env_path)
 
-# crawler/.env 파일에서 API 키들을 읽기
-crawler_env_path = Path(__file__).parent / '.env'
+# crawler/.env 파일에서 API 키들을 읽기 (한 단계 위인 crawler 폴더에 있음)
+crawler_env_path = Path(__file__).parent.parent / '.env'
 load_dotenv(crawler_env_path)
 
 # backend/.env에서 읽은 값들
