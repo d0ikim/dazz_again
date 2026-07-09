@@ -229,6 +229,14 @@ def collect_musicians():
         if response.status_code != 200:
             print(f"✗ 부기우기 페이지 요청 실패 (상태코드: {response.status_code})")
             return []
+
+        # ★ 인코딩 강제 지정 (중요)
+        # 부기우기 서버는 응답 헤더에 charset(문자 인코딩)을 알려주지 않는다.
+        # 이 경우 requests는 HTTP 옛 규약대로 ISO-8859-1(라틴 문자)로 해석해버려서
+        # 한글('멤버', 이름들)이 전부 깨지고 → 결과가 0명이 된다.
+        # 실제 페이지는 UTF-8이므로 직접 지정해준다.
+        response.encoding = 'utf-8'
+
         html = response.text
     except Exception as e:
         print(f"✗ 부기우기 페이지 요청 중 에러: {e}")
