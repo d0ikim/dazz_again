@@ -22,6 +22,9 @@
 # PostgreSQL 데이터베이스에 연결하기 위한 라이브러리
 import psycopg2
 
+# 문자열에서 특정 패턴을 찾기 위한 정규표현식 라이브러리 (인스타 핸들 추출용)
+import re
+
 # .env 파일에서 환경변수를 읽기 위한 라이브러리
 from dotenv import load_dotenv
 
@@ -46,6 +49,30 @@ DB_PASSWORD = os.getenv('DB_PASSWORD')         # PostgreSQL 비밀번호
 DB_DATABASE = os.getenv('DB_DATABASE')         # PostgreSQL 데이터베이스명
 DB_HOST = os.getenv('DB_HOST', 'localhost')    # 서버 주소 (없으면 localhost)
 DB_PORT = os.getenv('DB_PORT', '5432')         # 포트 번호 (없으면 5432)
+
+# ==================== 인스타그램 핸들 추출 함수 ====================
+
+def extract_instagram_handle(url):
+    """
+    인스타그램 URL에서 아이디(핸들) 부분만 뽑아 소문자로 돌려주는 함수.
+
+    같은 사람이 사이트마다 다른 활동명으로 등록된 경우가 있어서
+    (예: 올댓재즈 'Diego Bae' = 부기우기 'Diego'),
+    이름 대신 인스타 아이디로 "같은 사람인지"를 판별하는 데 쓴다.
+
+    입력값: url = 'https://www.instagram.com/blueshouse_diego' 같은 URL (None 가능)
+    반환값: 'blueshouse_diego' 같은 소문자 핸들. 인스타 URL이 아니거나 없으면 None
+    """
+
+    # 값이 없으면 핸들도 없음
+    if not url:
+        return None
+
+    # instagram.com/ 뒤의 아이디(영문/숫자/./_)를 찾는다
+    match = re.match(r'https?://(www\.)?instagram\.com/([A-Za-z0-9._]+)', url.strip(), re.IGNORECASE)
+
+    # 대소문자 차이로 다른 사람 취급하지 않도록 소문자로 통일해서 반환
+    return match.group(2).lower() if match else None
 
 # ==================== 데이터베이스 연결 함수 ====================
 
@@ -89,8 +116,8 @@ def get_existing_musicians(connection):
         # 쿼리를 실행할 커서 생성
         cursor = connection.cursor()
 
-        # 모든 뮤지션의 ID, 활동명, 프로필사진 URL 조회
-        cursor.execute("SELECT id, stage_name, profile_image_url FROM musician;")
+        # 모든 뮤지션의 ID, 활동명, 프로필사진 URL, 인스타 URL 조회
+        cursor.execute("SELECT id, stage_name, profile_image_url, sns_url FROM musician;")
 
         # 활동명을 키로 하는 딕셔너리로 변환.
         # 사진 있음 판정: 실제 DB에는 NULL뿐 아니라 빈 문자열('')로 들어간 행도 있어서,
@@ -101,6 +128,7 @@ def get_existing_musicians(connection):
             musicians[row[1]] = {
                 'id': row[0],   # 뮤지션 고유 번호 (UPDATE할 때 필요)
                 'hasImage': image_value is not None and image_value.strip() != '',
+                'handle': extract_instagram_handle(row[3]),  # 인스타 핸들 (같은 사람 판별용, 없으면 None)
             }
 
         # 커서 종료 (자원 해제)
@@ -220,7 +248,10 @@ def save_musicians(connection, musicians):
       2. 이미 있는데 사진이 비어 있고,
          크롤링 데이터에 사진이 있음 → 프로필사진만 UPDATE (보완)
       3. 그 외 (이미 있고 사진도 있음) → 건너뜀 (기존 데이터 보호)
-      - 이번에 방금 넣은 활동명도 기억해서, 크롤링 결과 안에 같은 이름이
+      4. 활동명은 달라도 '인스타 핸들'이 같은 뮤지션이 이미 있으면
+         → 같은 사람으로 보고 INSERT하지 않는다 (사진 보완만 시도)
+         (예: 올댓재즈 'Diego Bae' = 부기우기 'Diego' — 표기만 다른 동일 인물)
+      - 이번에 방금 넣은 활동명/핸들도 기억해서, 크롤링 결과 안에 같은 사람이
         또 나와도 중복 INSERT하지 않는다.
 
     입력값:
@@ -229,9 +260,16 @@ def save_musicians(connection, musicians):
     반환값: 없음 (결과를 화면에 요약 출력한다)
     """
 
-    # DB에 이미 있는 뮤지션 정보(활동명/사진유무)를 미리 조회
+    # DB에 이미 있는 뮤지션 정보(활동명/사진유무/인스타핸들)를 미리 조회
     existing = get_existing_musicians(connection)
     print(f"✓ 기존 musician {len(existing)}개 확인\n")
+
+    # 인스타 핸들 → 활동명 빠른 검색표(인덱스)를 만든다.
+    # "이 핸들을 가진 뮤지션이 이미 있나?"를 빠르게 확인하기 위한 용도.
+    handle_to_name = {}
+    for name, info in existing.items():
+        if info['handle']:
+            handle_to_name[info['handle']] = name
 
     # 결과 집계용 변수
     insert_count = 0   # 새로 추가된 수
@@ -243,10 +281,34 @@ def save_musicians(connection, musicians):
     for idx, musician in enumerate(musicians, 1):
         name = musician['stageName']
 
+        # 크롤링한 뮤지션의 인스타 핸들 (없으면 None)
+        handle = extract_instagram_handle(musician['snsUrl'])
+
+        # ── 규칙 4: 활동명은 다르지만 인스타 핸들이 같은 뮤지션이 이미 있는 경우 ──
+        # 같은 사람이 사이트마다 다른 표기로 등록된 것이므로 새로 INSERT하지 않는다.
+        if name not in existing and handle and handle in handle_to_name:
+            matched_name = handle_to_name[handle]   # DB에 이미 있는 그 사람의 활동명
+            # 그 사람의 사진이 비어 있고 크롤링 데이터에 사진이 있으면 보완만 해준다
+            # (id가 None = 이번 실행에서 방금 INSERT한 사람 → UPDATE할 id를 모르므로 보완 생략)
+            if existing[matched_name]['id'] is not None \
+                    and not existing[matched_name]['hasImage'] and musician['profileImageUrl']:
+                if update_musician_image(connection, existing[matched_name]['id'], musician['profileImageUrl']):
+                    print(f"[{idx}/{len(musicians)}] 🖼 사진 보완: {matched_name} (인스타 동일: {name})")
+                    enrich_count += 1
+                    existing[matched_name]['hasImage'] = True
+                else:
+                    fail_count += 1
+            else:
+                print(f"[{idx}/{len(musicians)}] ⏭ 스킵 (인스타 동일: 기존 '{matched_name}'): {name}")
+                skip_count += 1
+            continue
+
         # ── 규칙 2, 3: 이미 있는 활동명인 경우 ──
         if name in existing:
             # 사진이 없는데 크롤링 데이터에 사진이 있으면 → 사진만 보완
-            if not existing[name]['hasImage'] and musician['profileImageUrl']:
+            # (id가 None = 이번 실행에서 방금 INSERT한 사람 → UPDATE할 id를 모르므로 보완 생략)
+            if existing[name]['id'] is not None \
+                    and not existing[name]['hasImage'] and musician['profileImageUrl']:
                 if update_musician_image(connection, existing[name]['id'], musician['profileImageUrl']):
                     print(f"[{idx}/{len(musicians)}] 🖼 사진 보완: {name}")
                     enrich_count += 1
@@ -264,9 +326,11 @@ def save_musicians(connection, musicians):
         if insert_musician(connection, musician):
             print(f"[{idx}/{len(musicians)}] ✓ 추가: {name} ({musician['position']})")
             insert_count += 1
-            # 방금 넣은 뮤지션도 기존 목록에 추가 → 뒤에 같은 이름 또 나오면 스킵되도록
+            # 방금 넣은 뮤지션도 기존 목록/핸들 검색표에 추가 → 뒤에 같은 사람이 또 나오면 스킵되도록
             # (id는 이후 로직에서 쓰지 않으므로 None으로 둔다)
-            existing[name] = {'id': None, 'hasImage': musician['profileImageUrl'] is not None}
+            existing[name] = {'id': None, 'hasImage': musician['profileImageUrl'] is not None, 'handle': handle}
+            if handle:
+                handle_to_name[handle] = name
         else:
             fail_count += 1
 

@@ -26,6 +26,9 @@
 # HTTP 요청을 보내고 응답을 받기 위한 라이브러리 (JSON API 호출용)
 import requests
 
+# 문자열에서 특정 패턴을 찾기 위한 정규표현식 라이브러리 (인스타 URL 검사용)
+import re
+
 # 파이썬이 모듈을 찾는 경로 목록을 다루기 위한 라이브러리
 import sys
 
@@ -82,14 +85,23 @@ def normalize_instagram(raw):
     if value == "" or value.lower() == "null":
         return None
 
-    # 이미 http(s)로 시작하면 완전한 URL이다.
-    # 단, 'Https://'처럼 스킴(http/https 부분)이 대문자인 데이터가 섞여 있어
-    # 스킴만 소문자로 맞춘다. (뒤쪽 주소 부분은 대소문자를 건드리지 않는다)
+    # 이미 http(s)로 시작하면 완전한 URL이다. 인스타그램 URL이라면 아이디 부분을 검사한다.
+    # ※ 실제 데이터에 'https://instagram.com/'처럼 아이디 없이 도메인만 있는
+    #   '죽은 링크'가 88건이나 있었다 → 인스타 홈으로 가는 무의미한 링크이므로 None 처리.
+    # 정규식 의미: instagram.com/ 뒤에 아이디(영문/숫자/./_)가 1글자 이상 있어야 매칭됨
+    match = re.match(r'https?://(www\.)?instagram\.com/([A-Za-z0-9._]+)', value, re.IGNORECASE)
+    if match:
+        # 아이디가 있는 정상 인스타 URL → 표기를 통일해서 재조립
+        # (스킴 대문자 'Https' 문제도 이 재조립으로 함께 해결된다)
+        return f"https://www.instagram.com/{match.group(2)}"
+
     lowered = value.lower()
-    if lowered.startswith("https://"):
-        return "https://" + value[len("https://"):]
-    if lowered.startswith("http://"):
-        return "http://" + value[len("http://"):]
+    if lowered.startswith("http"):
+        # 인스타 도메인인데 아이디가 없는 죽은 링크 → 저장하지 않음
+        if 'instagram.com' in lowered:
+            return None
+        # 인스타가 아닌 다른 사이트 URL(유튜브 등)이면 그대로 저장
+        return value
 
     # 여기까지 왔으면 'jinsu_kim_' 같은 핸들만 있는 경우 → 앞주소를 붙여 완성
     return f"https://www.instagram.com/{value}"
