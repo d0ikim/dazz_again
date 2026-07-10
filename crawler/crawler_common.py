@@ -63,10 +63,16 @@ INSTRUMENT_MAP = {
     'trumpet': 'TRUMPET', 'clarinet': 'CLARINET', 'keyboard': 'KEYBOARD', 'guitar': 'GUITAR',
     'violin': 'VIOLIN', 'flute': 'FLUTE', 'vocal': 'VOCAL', 'piano': 'PIANO', 'drums': 'DRUMS',
     'drum': 'DRUMS', 'harp': 'HARP', 'bass': 'BASS', 'cello': 'CELLO', 'oud': 'OUD', 'sax': 'SAXOPHONE',
+    'chromatic harmonica': 'HARMONICA', 'harmonica': 'HARMONICA', 'harnonica': 'HARMONICA',  # harnonica = 에반스 사이트의 실제 오타
+    'vibraphone': 'VIBRAPHONE',
+    'percussion': 'PERCUSSION', 'kontrabass': 'BASS', 'contrabass': 'BASS', 'synthesizer': 'KEYBOARD',
+    'synth': 'KEYBOARD', 'organ': 'KEYBOARD',
     # --- 한글 표기 ---
     '기타': 'GUITAR', '베이스': 'BASS', '드럼': 'DRUMS', '피아노': 'PIANO', '트럼펫': 'TRUMPET',
     '트롬본': 'TROMBONE', '트럼본': 'TROMBONE', '색소폰': 'SAXOPHONE', '보컬': 'VOCAL', '바이올린': 'VIOLIN',
     '플루트': 'FLUTE', '클라리넷': 'CLARINET', '하프': 'HARP', '건반': 'KEYBOARD',
+    '하모니카': 'HARMONICA', '비브라폰': 'VIBRAPHONE', '퍼커션': 'PERCUSSION', '콘트라베이스': 'BASS',
+    '신디사이저': 'KEYBOARD', '오르간': 'KEYBOARD',
 }
 
 # 악기 키워드를 찾는 정규식.
@@ -358,19 +364,36 @@ def save_musicians(connection, musicians):
 
         # ── 규칙 2, 3: 이미 있는 활동명인 경우 ──
         if name in existing:
-            # 사진이 없는데 크롤링 데이터에 사진이 있으면 → 사진만 보완
-            # (id가 None = 이번 실행에서 방금 INSERT한 사람 → UPDATE할 id를 모르므로 보완 생략)
-            if existing[name]['id'] is not None \
-                    and not existing[name]['hasImage'] and musician['profileImageUrl']:
-                if update_musician_image(connection, existing[name]['id'], musician['profileImageUrl']):
-                    print(f"[{idx}/{len(musicians)}] 🖼 사진 보완: {name}")
-                    enrich_count += 1
-                    # 이제 사진이 생겼다고 표시 → 같은 이름이 또 나와도 다시 UPDATE하지 않음
-                    existing[name]['hasImage'] = True
-                else:
-                    fail_count += 1
+            info = existing[name]
+            enriched = []   # 이번에 보완한 항목 이름들 (출력용)
+
+            # id가 None = 이번 실행에서 방금 INSERT한 사람 → UPDATE할 id를 모르므로 보완 생략
+            if info['id'] is not None:
+                # 사진이 없는데 크롤링 데이터에 사진이 있으면 → 사진 보완
+                if not info['hasImage'] and musician['profileImageUrl']:
+                    if update_musician_image(connection, info['id'], musician['profileImageUrl']):
+                        info['hasImage'] = True   # 같은 이름이 또 나와도 다시 UPDATE하지 않도록 표시
+                        enriched.append('사진')
+                    else:
+                        fail_count += 1
+
+                # SNS가 없는데 크롤링 데이터에 인스타가 있으면 → SNS 보완
+                if not info['hasSns'] and musician['snsUrl']:
+                    if update_musician_sns(connection, info['id'], musician['snsUrl']):
+                        info['hasSns'] = True
+                        info['handle'] = handle
+                        # 핸들 검색표에도 추가 → 이후 같은 핸들이 다른 이름으로 와도 중복 INSERT 방지
+                        if handle:
+                            handle_to_name[handle] = name
+                        enriched.append('SNS')
+                    else:
+                        fail_count += 1
+
+            # 하나라도 보완했으면 보완으로 집계, 아니면 스킵
+            if enriched:
+                print(f"[{idx}/{len(musicians)}] 🖼 보완({'+'.join(enriched)}): {name}")
+                enrich_count += 1
             else:
-                # 이미 있고 보완할 것도 없으면 건너뜀
                 print(f"[{idx}/{len(musicians)}] ⏭ 스킵 (이미 존재): {name}")
                 skip_count += 1
             continue
@@ -381,7 +404,8 @@ def save_musicians(connection, musicians):
             insert_count += 1
             # 방금 넣은 뮤지션도 기존 목록/핸들 검색표에 추가 → 뒤에 같은 사람이 또 나오면 스킵되도록
             # (id는 이후 로직에서 쓰지 않으므로 None으로 둔다)
-            existing[name] = {'id': None, 'hasImage': musician['profileImageUrl'] is not None, 'handle': handle}
+            existing[name] = {'id': None, 'hasImage': musician['profileImageUrl'] is not None,
+                              'hasSns': musician['snsUrl'] is not None, 'handle': handle}
             if handle:
                 handle_to_name[handle] = name
         else:
@@ -390,7 +414,7 @@ def save_musicians(connection, musicians):
     # 결과 요약 출력
     print("\n" + "="*60)
     print(f"✓ 새로 추가: {insert_count}개")
-    print(f"🖼 사진 보완: {enrich_count}개")
+    print(f"🖼 보완(사진/SNS): {enrich_count}개")
     print(f"⏭ 중복 스킵: {skip_count}개")
     print(f"✗ 실패: {fail_count}개")
     print("="*60 + "\n")
