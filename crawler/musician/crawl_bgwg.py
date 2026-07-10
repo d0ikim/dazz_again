@@ -60,27 +60,11 @@ SCHEDULE_URL = "https://www.bgwg.kr/d02c10a2-6b3e-42f7-b98e-6035d31ca2d4"
 # 이 크롤러로 저장한 데이터임을 표시하는 출처 구분값 (musician.source_type 컬럼)
 SOURCE_TYPE = "CRAWLED_BOOGIEWOOGIE"
 
-# 악기 표기 → 우리 DB에서 쓸 표준 악기명 매핑표.
-# 사이트마다 'Guitar', '기타', 'Tenor Saxophone' 등 표기가 달라서 하나로 통일한다.
-# (여러 표기가 같은 악기를 가리키면 같은 값으로 모은다. 예: 'sax'와 'saxophone' → 'SAXOPHONE')
-INSTRUMENT_MAP = {
-    # --- 영어 표기 ---
-    'tenor saxophone': 'SAXOPHONE', 'alto saxophone': 'SAXOPHONE', 'bass clarinet': 'CLARINET',
-    'double bass': 'BASS', 'tenorsax': 'SAXOPHONE', 'saxophone': 'SAXOPHONE', 'trombone': 'TROMBONE',
-    'trumpet': 'TRUMPET', 'clarinet': 'CLARINET', 'keyboard': 'KEYBOARD', 'guitar': 'GUITAR',
-    'violin': 'VIOLIN', 'flute': 'FLUTE', 'vocal': 'VOCAL', 'piano': 'PIANO', 'drums': 'DRUMS',
-    'drum': 'DRUMS', 'harp': 'HARP', 'bass': 'BASS', 'cello': 'CELLO', 'oud': 'OUD', 'sax': 'SAXOPHONE',
-    # --- 한글 표기 ---
-    '기타': 'GUITAR', '베이스': 'BASS', '드럼': 'DRUMS', '피아노': 'PIANO', '트럼펫': 'TRUMPET',
-    '트롬본': 'TROMBONE', '트럼본': 'TROMBONE', '색소폰': 'SAXOPHONE', '보컬': 'VOCAL', '바이올린': 'VIOLIN',
-    '플루트': 'FLUTE', '클라리넷': 'CLARINET', '하프': 'HARP', '건반': 'KEYBOARD',
-}
-
-# 악기 키워드를 찾는 정규식.
-# 긴 표기가 먼저 매칭되도록 길이 내림차순으로 정렬한다.
-# (예: 'Tenor Saxophone'을 'Sax'보다 먼저 시도해야 통째로 잡힌다)
-_INSTR_KEYS = sorted(INSTRUMENT_MAP.keys(), key=len, reverse=True)
-INSTR_REGEX = re.compile('(' + '|'.join(re.escape(k) for k in _INSTR_KEYS) + ')', re.IGNORECASE)
+# 악기 표기 매핑표와 악기 검색 정규식.
+# 원래 이 파일에 있었지만, 클럽에반스 크롤러도 똑같이 필요해져서
+# 공용 모듈(crawler_common)로 옮기고 여기서는 가져다 쓴다. (중복 제거)
+INSTRUMENT_MAP = crawler_common.INSTRUMENT_MAP
+INSTR_REGEX = crawler_common.INSTRUMENT_REGEX
 
 # 인스타그램 핸들을 찾는 정규식. '@' 뒤(공백이 껴 있어도)의 영문/숫자/./_ 를 핸들로 본다.
 HANDLE_REGEX = re.compile(r'@\s*([A-Za-z0-9._]+)')
