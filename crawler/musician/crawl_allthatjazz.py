@@ -130,6 +130,13 @@ def to_musician(artist):
     if not stage_name or not position:
         return None
 
+    # 활동명이 '고희안 트리오', '구본웅밴드' 같은 그룹(팀) 이름이면 건너뜀.
+    # musician 테이블은 개인만 저장한다 — 그룹은 나중에 공연 크롤러에서
+    # performance.title(공연명)로 다루고, 멤버 개인들만 lineup으로 연결할 예정.
+    if crawler_common.is_group_name(stage_name):
+        print(f"  ⏭ 그룹명으로 보여 제외: {stage_name}")
+        return None
+
     # 본명: name 값. 활동명과 같으면 굳이 중복 저장하지 않고 None으로 둔다
     real_name = (artist.get('name') or '').strip() or None
     if real_name == stage_name:
