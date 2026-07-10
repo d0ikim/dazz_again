@@ -184,9 +184,11 @@ def get_existing_musicians(connection):
         musicians = {}
         for row in cursor.fetchall():
             image_value = row[2]
+            sns_value = row[3]
             musicians[row[1]] = {
                 'id': row[0],   # 뮤지션 고유 번호 (UPDATE할 때 필요)
                 'hasImage': image_value is not None and image_value.strip() != '',
+                'hasSns': sns_value is not None and sns_value.strip() != '',   # SNS 보완 필요 여부 판단용
                 'handle': extract_instagram_handle(row[3]),  # 인스타 핸들 (같은 사람 판별용, 없으면 None)
             }
 
@@ -296,6 +298,47 @@ def update_musician_image(connection, musician_id, image_url):
         connection.rollback()
         return False
 
+# ==================== 기존 뮤지션 SNS(인스타) 보완 함수 ====================
+
+def update_musician_sns(connection, musician_id, sns_url):
+    """
+    기존 뮤지션의 SNS 주소(sns_url)만 UPDATE하는 함수.
+
+    ※ 사진 보완(update_musician_image)과 같은 원리:
+      save_musicians()가 'SNS가 비어 있는 뮤지션'에 대해서만 호출한다.
+      이미 SNS가 있는 뮤지션은 절대 덮어쓰지 않는다.
+      (예: 에반스 크롤러가 처음엔 인스타 없이 저장했다가,
+       나중에 라인업에서 인스타를 발견하면 그때 채워준다)
+
+    입력값:
+      - connection  = 데이터베이스 연결 객체
+      - musician_id = SNS를 채워줄 뮤지션의 고유 번호(id)
+      - sns_url     = 크롤링으로 얻은 인스타그램 URL
+    반환값: 성공 시 True, 실패 시 False
+    """
+    try:
+        # 쿼리를 실행할 커서 생성
+        cursor = connection.cursor()
+
+        # 해당 id 뮤지션의 SNS 컬럼만 갱신
+        cursor.execute(
+            "UPDATE musician SET sns_url = %s WHERE id = %s;",
+            (sns_url, musician_id)
+        )
+
+        # 변경사항을 실제 DB에 반영 (COMMIT)
+        connection.commit()
+
+        # 커서 종료
+        cursor.close()
+
+        return True
+    except Exception as e:
+        # UPDATE 실패 시 에러 출력 후 트랜잭션 되돌림
+        print(f"  ✗ SNS 보완 실패 (musician id={musician_id}): {e}")
+        connection.rollback()
+        return False
+
 # ==================== 뮤지션 리스트 통째로 저장 함수 ====================
 
 def save_musicians(connection, musicians):
@@ -304,9 +347,9 @@ def save_musicians(connection, musicians):
 
     저장 규칙:
       1. DB에 없는 활동명           → 새로 INSERT
-      2. 이미 있는데 사진이 비어 있고,
-         크롤링 데이터에 사진이 있음 → 프로필사진만 UPDATE (보완)
-      3. 그 외 (이미 있고 사진도 있음) → 건너뜀 (기존 데이터 보호)
+      2. 이미 있는데 사진/SNS가 비어 있고,
+         크롤링 데이터에 그 값이 있음 → 비어 있는 항목만 UPDATE (보완)
+      3. 그 외 (이미 있고 보완할 것도 없음) → 건너뜀 (기존 데이터 보호)
       4. 활동명은 달라도 '인스타 핸들'이 같은 뮤지션이 이미 있으면
          → 같은 사람으로 보고 INSERT하지 않는다 (사진 보완만 시도)
          (예: 올댓재즈 'Diego Bae' = 부기우기 'Diego' — 표기만 다른 동일 인물)
