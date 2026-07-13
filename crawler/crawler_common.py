@@ -1,18 +1,26 @@
 # ==================== 이 파일의 목적 ====================
-# 세 개의 재즈바 크롤러(클럽에반스/올댓재즈/부기우기)가 "공통으로" 쓰는 코드 모음.
+# 재즈바 크롤러들(클럽에반스/올댓재즈/부기우기/천년동안도)이 "공통으로" 쓰는 코드 모음.
 #
-# 각 크롤러는 사이트에서 뮤지션 목록을 뽑아내는 방식만 다르고,
-# 그렇게 뽑은 뮤지션을 DB에 저장하는 과정은 완전히 똑같다.
-# → 똑같은 코드를 3번 복사하지 않기 위해 여기 한 곳에 모아두고,
+# 각 크롤러는 사이트에서 뮤지션/공연 목록을 뽑아내는 방식만 다르고,
+# 그렇게 뽑은 데이터를 DB에 저장하는 과정은 완전히 똑같다.
+# → 똑같은 코드를 크롤러마다 복사하지 않기 위해 여기 한 곳에 모아두고,
 #   각 크롤러 파일이 이 파일을 import 해서 가져다 쓴다.
 #
 # 이 파일이 제공하는 것:
+# [뮤지션 저장 — musician 테이블]
 # 1. connect_db()               → PostgreSQL에 연결
 # 2. get_existing_musicians()   → 이미 저장된 뮤지션의 활동명/사진 유무 조회 (중복 방지 + 사진 보완용)
 # 3. insert_musician()          → 뮤지션 1명을 musician 테이블에 INSERT
 # 4. update_musician_image()    → 기존 뮤지션의 비어 있는 프로필사진만 UPDATE
 # 5. save_musicians()           → 뮤지션 리스트를 통째로 저장
 #                                 (신규는 INSERT, 기존인데 사진이 없으면 사진만 보완, 나머지는 스킵)
+# [공연 저장 — performance / performance_lineup 테이블]
+# 6. get_venue_id()             → 공연장 이름으로 venue 테이블의 id 조회
+# 7. get_existing_performances()→ 이미 저장된 공연의 (일시, 제목) 조회 (중복 방지용)
+# 8. get_musician_lookup()      → 라인업 이름을 musician id로 바꾸기 위한 검색표 조회
+# 9. save_performances()        → 공연 리스트를 통째로 저장하고 라인업까지 연결
+#                                 (공연 INSERT + performance_lineup INSERT,
+#                                  라인업 뮤지션이 DB에 없으면 musician까지 새로 INSERT)
 #
 # ※ 이 파일은 직접 실행하지 않는다. 항상 크롤러 파일이 import 해서 사용한다.
 # =====================================================
@@ -218,7 +226,11 @@ def insert_musician(connection, musician):
           profileImageUrl  : 프로필 사진 URL (없으면 None)
           sourceType       : 출처 구분 (예: "CRAWLED_EVANS")
           sourceUrl        : 출처 URL (없으면 None)
-    반환값: 성공 시 True, 실패 시 False
+    반환값: 성공 시 새 뮤지션의 id 숫자, 실패 시 None
+      ※ 원래는 True/False를 반환했지만, 공연 크롤러가 라인업 연결에
+        방금 넣은 뮤지션의 id를 바로 써야 해서 id를 반환하도록 바꿨다.
+        id는 1부터 시작하는 숫자라 if문에서 항상 참(truthy)이고 None은 거짓(falsy)이므로,
+        기존의 `if insert_musician(...)` 방식 호출도 그대로 동작한다.
     """
     try:
         # 쿼리를 실행할 커서 생성
@@ -228,10 +240,12 @@ def insert_musician(connection, musician):
         # 컬럼명은 JPA가 만든 스네이크케이스 규칙을 따른다 (stageName → stage_name).
         # user_id는 넣지 않는다 → 크롤링 데이터는 특정 로그인 유저의 것이 아니므로 NULL로 둔다.
         # %s 는 SQL Injection을 막는 안전한 값 자리표시자다.
+        # RETURNING id = INSERT하면서 방금 생성된 id를 바로 돌려받는 PostgreSQL 문법.
         query = """
             INSERT INTO musician
                 (stage_name, real_name, position, bio, sns_url, profile_image_url, source_type, source_url)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s);
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            RETURNING id;
         """
 
         # 딕셔너리에서 값을 꺼내 SQL의 %s 순서대로 전달한다.
@@ -246,19 +260,22 @@ def insert_musician(connection, musician):
             musician['sourceUrl'],
         ))
 
+        # RETURNING이 돌려준 새 뮤지션의 id를 꺼낸다
+        new_id = cursor.fetchone()[0]
+
         # 변경사항을 실제 DB에 반영 (COMMIT)
         connection.commit()
 
         # 커서 종료
         cursor.close()
 
-        return True
+        return new_id
     except Exception as e:
         # INSERT 실패 시 에러 출력
         print(f"  ✗ '{musician['stageName']}' INSERT 실패: {e}")
         # 실패한 트랜잭션을 되돌린다 (다음 INSERT가 정상 동작하도록)
         connection.rollback()
-        return False
+        return None
 
 # ==================== 기존 뮤지션 프로필사진 보완 함수 ====================
 
@@ -460,4 +477,350 @@ def save_musicians(connection, musicians):
     print(f"🖼 보완(사진/SNS): {enrich_count}개")
     print(f"⏭ 중복 스킵: {skip_count}개")
     print(f"✗ 실패: {fail_count}개")
+    print("="*60 + "\n")
+
+# ════════════════════════════════════════════════════════════
+#  여기서부터는 '공연(performance)' 저장용 공용 함수들
+# ════════════════════════════════════════════════════════════
+
+# ==================== 공연장 ID 조회 함수 ====================
+
+def get_venue_id(connection, venue_name):
+    """
+    공연장 이름으로 venue 테이블의 id를 조회하는 함수.
+
+    performance 테이블의 venue_id 컬럼(FK, NULL 불가)에 넣을 값이 필요해서,
+    각 공연 크롤러가 저장 전에 자기 공연장의 id를 이 함수로 알아낸다.
+    (venue id를 크롤러에 숫자로 박아두면 DB를 새로 만들 때 id가 달라져 깨질 수 있어서
+     '이름으로 조회'하는 방식을 쓴다)
+
+    입력값:
+      - connection = 데이터베이스 연결 객체
+      - venue_name = 공연장 이름 (예: '클럽에반스')
+    반환값: venue의 id 숫자. 없으면 None
+    """
+    try:
+        # 쿼리를 실행할 커서 생성
+        cursor = connection.cursor()
+
+        # 이름이 정확히 일치하는 공연장의 id 조회
+        cursor.execute("SELECT id FROM venue WHERE name = %s;", (venue_name,))
+        row = cursor.fetchone()
+
+        # 커서 종료 (자원 해제)
+        cursor.close()
+
+        # 조회 결과가 있으면 id 숫자, 없으면 None
+        return row[0] if row else None
+    except Exception as e:
+        print(f"✗ 공연장 '{venue_name}' 조회 실패: {e}")
+        return None
+
+# ==================== 기존 공연 조회 함수 ====================
+
+def get_existing_performances(connection, venue_id):
+    """
+    특정 공연장의 이미 저장된 공연들을 조회하는 함수.
+
+    크롤러를 여러 번 실행해도 같은 공연이 중복 저장되지 않도록,
+    '(공연 일시, 공연명)' 조합을 중복 판단 기준으로 쓴다.
+    (같은 공연장에서 같은 시각에 같은 제목의 공연이 두 개일 수는 없으므로)
+
+    입력값:
+      - connection = 데이터베이스 연결 객체
+      - venue_id   = 공연장 id
+    반환값: {(start_time, title), ...} 형태의 집합(set) — "이 조합은 이미 있다" 빠른 확인용
+    """
+    try:
+        # 쿼리를 실행할 커서 생성
+        cursor = connection.cursor()
+
+        # 이 공연장의 모든 공연의 (일시, 제목) 조회
+        cursor.execute("SELECT start_time, title FROM performance WHERE venue_id = %s;", (venue_id,))
+
+        # (일시, 제목) 튜플의 집합으로 변환 — set은 'in' 검사가 매우 빠르다
+        performances = {(row[0], row[1]) for row in cursor.fetchall()}
+
+        # 커서 종료
+        cursor.close()
+
+        return performances
+    except Exception as e:
+        print(f"✗ 기존 performance 조회 실패: {e}")
+        return set()
+
+# ==================== 뮤지션 검색표 조회 함수 ====================
+
+def get_musician_lookup(connection):
+    """
+    라인업의 뮤지션 이름을 musician 테이블의 id로 바꾸기 위한 검색표를 만드는 함수.
+
+    performance_lineup 테이블은 (공연 id, 뮤지션 id) 쌍을 저장하므로,
+    크롤링한 라인업의 '이름'을 'id'로 변환해야 한다. 두 가지 검색표를 만든다:
+      1. 활동명 → id  (기본 검색)
+      2. 인스타 핸들 → id  (활동명 표기가 사이트마다 달라도 같은 사람을 찾기 위한 보조 검색.
+                            예: 올댓재즈 'Diego Bae' = 부기우기 'Diego')
+
+    입력값: connection = 데이터베이스 연결 객체
+    반환값: (name_to_id, handle_to_id) 딕셔너리 두 개의 튜플
+    """
+    try:
+        # 쿼리를 실행할 커서 생성
+        cursor = connection.cursor()
+
+        # 모든 뮤지션의 id, 활동명, SNS URL 조회
+        cursor.execute("SELECT id, stage_name, sns_url FROM musician;")
+
+        name_to_id = {}     # 활동명 → id
+        handle_to_id = {}   # 인스타 핸들 → id
+        for row in cursor.fetchall():   # row = (5, '김이슬', 'Https://www.instagram.com/kis')
+            name_to_id[row[1]] = row[0] # name_to_id['김이슬'] = 5 <-이런식.
+            # 최종적으로 name_to_id = {'김이슬': 5, '이선지': 12, 'Diego Bae': 33, ...}
+            # 이 검색표 없으면, 라인업한명당 DB쿼리왕복이 한번씩 생기는데, 검색표를 미리 만들어두면 라인업한명당 딕셔너리 조회만으로 id를 바로 찾을 수 있다.
+
+            # SNS URL에서 인스타 핸들을 뽑아 보조 검색표에도 등록 (인스타가 아니면 None이라 제외)
+            handle = extract_instagram_handle(row[2])
+            if handle:
+                handle_to_id[handle] = row[0]   # handle_to_id = {'kimdoii': 7, 'mona.jazz': 5, ...}
+
+        # 커서 종료
+        cursor.close()
+
+        return (name_to_id, handle_to_id)
+    except Exception as e:
+        print(f"✗ musician 검색표 조회 실패: {e}")
+        return ({}, {})
+
+# ==================== 공연 1개 INSERT 함수 ====================
+
+def insert_performance(connection, venue_id, perf):
+    """
+    공연 1개를 performance 테이블에 INSERT하는 함수.
+
+    입력값:
+      - connection = 데이터베이스 연결 객체
+      - venue_id   = 공연장 id (FK)
+      - perf       = 공연 정보 딕셔너리. 아래 키를 가진다:
+          startTime : 공연 일시 (파이썬 datetime 객체, 필수)
+          title     : 공연명 (필수)
+          genre     : 장르 (없으면 None)
+          setInfo   : 세트 안내 (없으면 None, 예: "1부 8시 - 8시 50분")
+          setList   : 셋리스트 (없으면 None)
+          sourceUrl : 출처 URL (없으면 None)
+    반환값: 성공 시 새 공연의 id 숫자, 실패 시 None
+    """
+    try:
+        # 쿼리를 실행할 커서 생성
+        cursor = connection.cursor()
+
+        # performance 테이블에 새 행을 추가하는 SQL.
+        # is_cancelled는 NULL 불가 컬럼이므로 항상 FALSE(취소 아님)로 넣는다.
+        # RETURNING id = INSERT하면서 방금 생성된 id를 바로 돌려받는 PostgreSQL 문법.
+        #               (라인업 연결에 이 id가 필요해서 씀)
+        query = """
+            INSERT INTO performance
+                (venue_id, start_time, title, genre, set_info, set_list, is_cancelled, source_url)
+            VALUES (%s, %s, %s, %s, %s, %s, FALSE, %s)
+            RETURNING id;
+        """
+
+        # 딕셔너리에서 값을 꺼내 SQL의 %s 순서대로 전달
+        cursor.execute(query, (
+            venue_id,
+            perf['startTime'],
+            perf['title'],
+            perf['genre'],
+            perf['setInfo'],
+            perf['setList'],
+            perf['sourceUrl'],
+        ))
+
+        # RETURNING이 돌려준 새 공연의 id를 꺼낸다
+        new_id = cursor.fetchone()[0]
+
+        # 변경사항을 실제 DB에 반영 (COMMIT)
+        connection.commit()
+
+        # 커서 종료
+        cursor.close()
+
+        return new_id
+    except Exception as e:
+        # INSERT 실패 시 에러 출력 후 트랜잭션 되돌림
+        print(f"  ✗ 공연 '{perf['title']}' INSERT 실패: {e}")
+        connection.rollback()
+        return None
+
+# ==================== 라인업 1행 INSERT 함수 ====================
+
+def insert_lineup(connection, performance_id, musician_id):
+    """
+    공연-뮤지션 연결 1행을 performance_lineup 테이블에 INSERT하는 함수.
+
+    performance_lineup은 "이 공연에 이 뮤지션이 출연했다"를 기록하는 연결 테이블로,
+    (performance_id, musician_id) 쌍이 복합 기본키(PK)다.
+
+    입력값:
+      - connection     = 데이터베이스 연결 객체
+      - performance_id = 공연 id
+      - musician_id    = 뮤지션 id
+    반환값: 성공 시 True, 실패 시 False
+    """
+    try:
+        # 쿼리를 실행할 커서 생성
+        cursor = connection.cursor()
+
+        # 연결 행 추가
+        cursor.execute(
+            "INSERT INTO performance_lineup (performance_id, musician_id) VALUES (%s, %s);",
+            (performance_id, musician_id)
+        )
+
+        # 변경사항을 실제 DB에 반영 (COMMIT)
+        connection.commit()
+
+        # 커서 종료
+        cursor.close()
+
+        return True
+    except Exception as e:
+        # INSERT 실패 시 에러 출력 후 트랜잭션 되돌림
+        print(f"  ✗ 라인업 연결 실패 (performance={performance_id}, musician={musician_id}): {e}")
+        connection.rollback()
+        return False
+
+# ==================== 공연 리스트 통째로 저장 함수 ====================
+
+def save_performances(connection, venue_name, performances, musician_source_type):
+    """
+    크롤러가 뽑아낸 공연 리스트를 통째로 DB에 저장하고 라인업까지 연결하는 함수.
+
+    저장 규칙:
+      1. (공연 일시, 공연명)이 이미 DB에 있으면          → 건너뜀 (중복 방지)
+      2. 없으면 performance INSERT 후, 라인업의 뮤지션마다:
+         a. 활동명이 musician 테이블에 있으면            → 그 id로 라인업 연결
+         b. 활동명은 없지만 인스타 핸들이 같은 사람이 있으면 → 그 id로 연결 (표기만 다른 동일 인물)
+         c. 둘 다 없고 악기(position) 정보가 있으면       → musician을 새로 INSERT 후 연결
+            (단, 그룹명으로 보이는 이름은 musician에 넣지 않으므로 연결도 생략)
+         d. 둘 다 없고 악기 정보도 없으면                → 연결 생략 (누구인지 특정 불가)
+
+    입력값:
+      - connection           = 데이터베이스 연결 객체
+      - venue_name           = 공연장 이름 (venue id를 조회하는 데 사용)
+      - performances         = 공연 정보 딕셔너리 리스트.
+                               insert_performance()의 키에 더해 'lineup' 키를 가진다:
+                               lineup = [{'stageName': 이름, 'position': 악기 또는 None,
+                                          'snsUrl': 인스타 URL 또는 None}, ...]
+      - musician_source_type = 라인업에서 새 뮤지션을 INSERT할 때 쓸 출처 구분값
+    반환값: 없음 (결과를 화면에 요약 출력한다)
+    """
+
+    # 공연장 id 조회 — 없으면 저장 자체가 불가능하므로 중단
+    venue_id = get_venue_id(connection, venue_name)
+    if venue_id is None:
+        print(f"✗ venue 테이블에 '{venue_name}' 공연장이 없어 저장을 중단합니다")
+        return
+
+    # 이 공연장의 기존 공연 (일시, 제목) 집합 — 중복 방지용
+    existing = get_existing_performances(connection, venue_id)
+    print(f"✓ '{venue_name}'(venue id={venue_id})의 기존 공연 {len(existing)}개 확인")
+
+    # 뮤지션 검색표 (활동명 → id, 인스타 핸들 → id)
+    name_to_id, handle_to_id = get_musician_lookup(connection)
+    print(f"✓ 기존 musician 검색표 {len(name_to_id)}명 준비\n")
+
+    # 결과 집계용 변수
+    insert_count = 0         # 새로 저장된 공연 수
+    skip_count = 0           # 중복으로 건너뛴 공연 수
+    fail_count = 0           # INSERT 실패 수
+    lineup_count = 0         # 연결된 라인업 행 수
+    new_musician_count = 0   # 라인업에서 새로 INSERT된 뮤지션 수
+    unmatched_count = 0      # 누구인지 특정하지 못해 연결을 생략한 수
+
+    # 공연을 하나씩 저장 시도
+    for idx, perf in enumerate(performances, 1):
+        key = (perf['startTime'], perf['title'])
+
+        # ── 규칙 1: 이미 있는 (일시, 제목) 조합이면 건너뜀 ──
+        if key in existing:
+            print(f"[{idx}/{len(performances)}] ⏭ 스킵 (이미 존재): {perf['startTime']} {perf['title']}")
+            skip_count += 1
+            continue
+
+        # ── 규칙 2: 공연 INSERT ──
+        performance_id = insert_performance(connection, venue_id, perf)
+        if performance_id is None:
+            fail_count += 1
+            continue
+
+        # 방금 넣은 공연도 기존 집합에 추가 → 크롤링 결과 안에 같은 공연이 또 있어도 중복 방지
+        existing.add(key)
+        insert_count += 1
+
+        # ── 라인업 연결 ──
+        linked_ids = set()   # 이 공연에 이미 연결한 뮤지션 id (한 공연에 같은 사람 중복 연결 방지)
+        linked_names = []    # 연결된 이름들 (출력용)
+
+        for member in perf['lineup']:
+            member_name = member['stageName']
+
+            # a. 활동명으로 검색
+            musician_id = name_to_id.get(member_name)
+
+            # b. 활동명으로 못 찾으면 인스타 핸들로 검색 (표기만 다른 동일 인물 대비)
+            if musician_id is None:
+                handle = extract_instagram_handle(member.get('snsUrl'))
+                if handle:
+                    musician_id = handle_to_id.get(handle)
+
+            # c. DB에 없는 사람 → 악기 정보가 있으면 musician을 새로 INSERT
+            if musician_id is None and member.get('position'):
+                # 그룹명으로 보이는 이름은 musician 테이블(개인 전용)에 넣지 않는다
+                if is_group_name(member_name):
+                    unmatched_count += 1
+                    continue
+
+                # 새 뮤지션 INSERT (출처 = 이 공연 크롤러, 출처 URL = 이 공연 페이지)
+                new_musician = {
+                    'stageName': member_name,
+                    'realName': None,
+                    'position': member['position'],
+                    'bio': None,
+                    'snsUrl': member.get('snsUrl'),
+                    'profileImageUrl': None,
+                    'sourceType': musician_source_type,
+                    'sourceUrl': perf['sourceUrl'],
+                }
+                # insert_musician()이 방금 만든 id를 바로 돌려준다 (실패하면 None)
+                musician_id = insert_musician(connection, new_musician)
+                if musician_id is not None:
+                    # 검색표에도 등록 → 다른 공연 라인업에 같은 사람이 또 나오면 재사용
+                    name_to_id[member_name] = musician_id
+                    new_musician_count += 1
+
+            # d. 여기까지도 못 찾았으면 연결 생략
+            if musician_id is None:
+                unmatched_count += 1
+                continue
+
+            # 이 공연에 이미 연결한 사람이면 건너뜀 (같은 이름이 라인업에 두 번 적힌 경우)
+            if musician_id in linked_ids:
+                continue
+
+            # 공연-뮤지션 연결 행 INSERT
+            if insert_lineup(connection, performance_id, musician_id):
+                linked_ids.add(musician_id)
+                linked_names.append(member_name)
+                lineup_count += 1
+
+        print(f"[{idx}/{len(performances)}] ✓ 추가: {perf['startTime']} {perf['title']}"
+              f" (라인업 {len(linked_names)}명: {', '.join(linked_names) if linked_names else '없음'})")
+
+    # 결과 요약 출력
+    print("\n" + "="*60)
+    print(f"✓ 새로 저장된 공연: {insert_count}개")
+    print(f"⏭ 중복 스킵: {skip_count}개")
+    print(f"✗ 실패: {fail_count}개")
+    print(f"🎵 연결된 라인업: {lineup_count}명 (새로 추가된 뮤지션 {new_musician_count}명 포함)")
+    print(f"❓ 특정 실패로 연결 생략: {unmatched_count}명")
     print("="*60 + "\n")
