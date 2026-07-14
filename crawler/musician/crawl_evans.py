@@ -311,14 +311,28 @@ def fetch_month_events(year, month):
 
     return events
 
-# ==================== 상세 페이지에서 라인업 뽑기 함수 ====================
+# ==================== 상세 페이지 본문을 줄 목록으로 가져오는 함수 ====================
 
-def fetch_lineup(year, month, day, wr_id):
+def fetch_detail_lines(year, month, day, wr_id):
     """
-    공연 상세 페이지를 요청해서 라인업 (악기, 이름) 목록을 돌려주는 함수.
+    공연 상세 페이지를 요청해서 (본문 줄 목록, URL, 전체 공연 제목)을 돌려주는 함수.
+
+    원래 fetch_lineup() 안에 있던 코드였는데,
+    공연 크롤러(crawl_evans_performance.py)도 같은 본문에서
+    시간 안내 줄("1부 8시 - 8시 50분")을 읽어야 해서 별도 함수로 분리했다.
+    → 뮤지션 크롤러는 이 줄들에서 라인업을, 공연 크롤러는 공연 시각을 뽑는다.
+
+    전체 제목도 함께 돌려주는 이유:
+      달력의 링크 텍스트는 사이트가 길면 잘라서 보여준다 ('김유진 x 어그벗(Aggressive…').
+      본문 위 제목 영역(adm_title)조차 긴 제목은 잘려 있는데,
+      브라우저 탭에 표시되는 <title> 태그에는 항상 전체 제목이 있다:
+        <title>김보민 Trio with Special Guest > SCHEDULE | EVANS</title>
+      → 여기서 ' > SCHEDULE | EVANS' 꼬리를 떼어낸 것을 전체 제목으로 쓴다.
+      공연 크롤러가 performance.title에 이 값을 쓴다.
 
     입력값: year, month, day, wr_id = 상세 페이지를 특정하는 값들
-    반환값: (라인업 리스트, 상세페이지 URL) 튜플
+    반환값: (줄 문자열 리스트, 상세페이지 URL, 전체 제목) 튜플.
+            요청 실패 시 ([], URL 또는 None, None). 제목 영역이 없으면 제목만 None.
     """
 
     # 상세 페이지 요청 파라미터 (달력 파라미터 + day + wr_id)
@@ -327,19 +341,26 @@ def fetch_lineup(year, month, day, wr_id):
     try:
         response = requests.get(BOARD_URL, params=params, headers=HEADERS, timeout=20)
         if response.status_code != 200:
-            return ([], response.url)
+            return ([], response.url, None)
         response.encoding = 'utf-8'
         html = response.text
         detail_url = response.url    # 실제 요청된 전체 URL (출처 기록용)
     except Exception:
-        return ([], None)
+        return ([], None, None)
 
     soup = BeautifulSoup(html, 'html.parser')
+
+    # 전체 공연 제목 = <title> 태그에서 ' > SCHEDULE | EVANS' 꼬리를 뗀 것.
+    # rsplit(' > ', 1) = 문자열을 ' > ' 기준으로 '오른쪽에서 1번만' 쪼갬
+    # → 제목 자체에 '>'가 들어 있어도 마지막 꼬리만 안전하게 떨어진다.
+    full_title = None
+    if soup.title:
+        full_title = soup.title.get_text().rsplit(' > ', 1)[0].strip() or None
 
     # 본문 영역 = id가 "bo_v_con"인 태그 (그누보드의 글 본문 표준 위치)
     content = soup.find(id='bo_v_con')
     if content is None:
-        return ([], detail_url)
+        return ([], detail_url, full_title)
 
     # 본문을 줄 단위 텍스트로 변환.
     # separator='\n' → <br>이나 <p> 태그 경계마다 줄바꿈을 넣어준다 (줄 구조 유지)
@@ -351,6 +372,21 @@ def fetch_lineup(year, month, day, wr_id):
         line = line.replace('​', '').replace('\xa0', ' ').strip()
         if line:
             lines.append(line)
+
+    return (lines, detail_url, full_title)
+
+# ==================== 상세 페이지에서 라인업 뽑기 함수 ====================
+
+def fetch_lineup(year, month, day, wr_id):
+    """
+    공연 상세 페이지를 요청해서 라인업 (악기, 이름) 목록을 돌려주는 함수.
+
+    입력값: year, month, day, wr_id = 상세 페이지를 특정하는 값들
+    반환값: (라인업 리스트, 상세페이지 URL) 튜플
+    """
+
+    # 상세 페이지 본문을 줄 목록으로 가져온 뒤 (전체 제목은 뮤지션 수집에 안 쓰므로 _ 로 버림)
+    lines, detail_url, _ = fetch_detail_lines(year, month, day, wr_id)
 
     # 줄 목록을 파싱해서 라인업 반환
     return (parse_lineup(lines), detail_url)

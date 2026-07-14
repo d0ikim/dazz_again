@@ -36,8 +36,7 @@ jobs:
     services:
       postgres:
         image: postgres:16
-        # 아래 3개 값은 밑의 "Build and run tests with Gradle" 단계의
-        # DB_DATABASE / DB_USER / DB_PASSWORD 환경변수와 반드시 같아야 함
+        # env: 컨테이너 내부에서 사용할 환경변수 초기 값 설정
         env:
           POSTGRES_DB: dazz
           POSTGRES_USER: dazz_admin
@@ -54,6 +53,7 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
+    # -----------------------------------------------------------------------------
     # 작업이 실행할 단계들 (steps: 1단계, 2단계, ...)
     steps:
       # 1단계: 코드 다운로드
