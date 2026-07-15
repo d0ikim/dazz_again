@@ -82,11 +82,18 @@ export default function GraphView({ edges = [], musicians = {}, center, navigate
 
       // 아바타 원형 요소: 중심 노드는 크게, 나머지는 작게
       const av = document.createElement('div');
-      // stageName의 첫 글자를 아바타에 표시, 없으면 '?'
-      av.textContent = m?.stageName?.[0] || '?';
       av.style.cssText = isCenter
-        ? 'width:44px;height:44px;font-size:18px;background:var(--wine);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid var(--wine);'
-        : 'width:32px;height:32px;font-size:13px;background:var(--paper-2,#f5f3f0);border-radius:50%;display:flex;align-items:center;justify-content:center;border:1px solid var(--line);';
+        ? 'width:44px;height:44px;font-size:18px;background:var(--wine);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid var(--wine);overflow:hidden;'
+        : 'width:32px;height:32px;font-size:13px;background:var(--paper-2,#f5f3f0);border-radius:50%;display:flex;align-items:center;justify-content:center;border:1px solid var(--line);overflow:hidden;';
+
+      // 프로필 이미지가 있으면 배경 이미지로 표시, 없으면 stageName의 첫 글자를 텍스트로 표시
+      if (m?.profileImageUrl) {
+        av.style.backgroundImage = `url(${m.profileImageUrl})`;
+        av.style.backgroundSize = 'cover';
+        av.style.backgroundPosition = 'center';
+      } else {
+        av.textContent = m?.stageName?.[0] || '?';
+      }
 
       // 이름 레이블: stageName 사용 (백엔드 필드명)
       const lbl = document.createElement('span');

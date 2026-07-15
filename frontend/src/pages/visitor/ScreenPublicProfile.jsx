@@ -89,8 +89,8 @@ export default function ScreenPublicProfile({ uuid, navigate, auth }) {
 
         {/* 프로필 히어로 영역 */}
         <div className="profile-hero">
-          {/* stageName의 첫 글자를 아바타에 표시 */}
-          <Avatar name={musician.stageName} size="xl" />
+          {/* stageName의 첫 글자를 아바타에 표시, 프로필 이미지가 있으면 그 이미지 표시 */}
+          <Avatar name={musician.stageName} size="xl" profileImageUrl={musician.profileImageUrl} />
           <div className="col" style={{ gap: 4 }}>
             <div className="row" style={{ gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
               {/* stageName: 활동명 (백엔드 필드명) */}

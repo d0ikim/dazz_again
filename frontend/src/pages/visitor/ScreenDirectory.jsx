@@ -149,7 +149,13 @@ export default function ScreenDirectory({ navigate, auth, onLoginClick }) {
           {list.map((m) => (
             // m.id: 백엔드 DB의 숫자형 PK (mock의 문자열 uuid 대신 사용)
             <div key={m.id} className="card-m" onClick={() => navigate('profile-public', { uuid: m.id })}>
-              <div className="cover imgph">{m.stageName} 사진</div>
+              <div className="cover">
+                {m.profileImageUrl ? (
+                  <img src={m.profileImageUrl} alt={`${m.stageName} 프로필`} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                ) : (
+                  <div className="imgph">{m.stageName} 사진</div>
+                )}
+              </div>
               <div className="meta">
                 {/* stageName: 백엔드 필드명 (mock의 name에 해당) */}
                 <div className="name serif">{m.stageName}</div>
