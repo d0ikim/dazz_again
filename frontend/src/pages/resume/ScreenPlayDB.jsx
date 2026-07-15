@@ -6,6 +6,7 @@ import GraphView from '../visitor/GraphView'; // 인맥 관계도 캔버스 컴�
 import Avatar from '../../components/Avatar'; // 이니셜 아바타
 import Icon from '../../components/Icon';     // 아이콘
 import { api } from '../../api/client';       // 백엔드 API 호출 함수 모음
+import { getWeightBadgeStyle } from '../../utils/weightColor'; // 협연 횟수에 따른 배지 색 계산
 
 // GraphResponse → GraphView 형식 변환 (ScreenPublicProfile과 동일한 로직)
 // GraphResponse: { center: Musician, edges: [{ musician: Musician, weight: int }] }
@@ -49,12 +50,14 @@ function MusicianMap({ uuid, navigate }) {
   if (loading) return <div className="main"><div className="pad"><p className="muted">인맥지도를 불러오는 중...</p></div></div>;
   if (!musician) return <div className="main"><div className="pad"><p className="muted">뮤지션을 찾을 수 없습니다.</p></div></div>;
 
-  // GraphView edges에서 협연 뮤지션 목록 추출 (중심 제외)
+  // GraphView edges에서 협연 뮤지션 목록 추출 (중심 제외), 협연 횟수 많은 순 정렬
   const centerId = String(uuid);
-  const partners = graphEdges.map((e) => {
-    const otherId = e.a === centerId ? e.b : e.a;
-    return { id: otherId, musician: graphMusicians[otherId], weight: e.w };
-  });
+  const partners = graphEdges
+    .map((e) => {
+      const otherId = e.a === centerId ? e.b : e.a;
+      return { id: otherId, musician: graphMusicians[otherId], weight: e.w };
+    })
+    .sort((a, b) => b.weight - a.weight);
 
   return (
     <div className="main">
@@ -65,7 +68,7 @@ function MusicianMap({ uuid, navigate }) {
 
         {/* 중심 뮤지션 헤더 */}
         <div className="profile-hero" style={{ paddingTop: 20 }}>
-          <Avatar name={musician.stageName} size="xl" />
+          <Avatar name={musician.stageName} size="xl" profileImageUrl={musician.profileImageUrl} />
           <div className="col" style={{ gap: 4 }}>
             <div className="row" style={{ gap: 8, alignItems: 'center' }}>
               <h1 className="h2 serif" style={{ margin: 0 }}>{musician.stageName}</h1>
@@ -93,34 +96,31 @@ function MusicianMap({ uuid, navigate }) {
           />
         </div>
 
-        {/* 협연 뮤지션 목록 */}
+        {/* 협연 뮤지션 목록 — 한 줄에 한 명씩(리스트)이 아니라 카드 그리드로 한눈에 보기 좋게.
+            이 페이지는 두 컬럼으로 나뉘지 않고 폭이 넓어서, 프로필 페이지의 4열 고정 대신
+            auto-fill로 폭에 맞춰 더 많은 카드가 한 줄에 들어가도록 함 */}
         <h3 className="section-label">협연 뮤지션 ({partners.length}명)</h3>
-        <div className="card flush">
-          {partners.map(({ id, musician: m, weight }) => (
-            <div key={id} className="collab-list-row">
-              <Avatar name={m?.stageName} size="md" />
-              <div className="col grow" style={{ gap: 2 }}>
-                <b style={{ fontSize: 14 }}>{m?.stageName}</b>
-                <span className="muted" style={{ fontSize: 12 }}>
-                  {m?.position} · {weight}회 함께 공연
-                </span>
+        {partners.length > 0 ? (
+          <div className="partner-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))' }}>
+            {partners.map(({ id, musician: m, weight }) => (
+              <div
+                key={id}
+                className="partner-card"
+                onClick={() => navigate('playdb', { uuid: Number(id) })}
+              >
+                <Avatar name={m?.stageName} size="md" profileImageUrl={m?.profileImageUrl} />
+                <b className="cc-name">{m?.stageName}</b>
+                <span className="cc-count" style={getWeightBadgeStyle(weight)}>{weight}회</span>
               </div>
-              <div className="row" style={{ gap: 8 }}>
-                <button className="btn ghost sm" onClick={() => navigate('playdb', { uuid: Number(id) })}>
-                  인맥지도 <Icon name="graph" size={13} />
-                </button>
-                <button className="btn ghost sm" onClick={() => navigate('profile-public', { uuid: Number(id) })}>
-                  <Icon name="arrow-right" size={14} />
-                </button>
-              </div>
-            </div>
-          ))}
-          {partners.length === 0 && (
+            ))}
+          </div>
+        ) : (
+          <div className="card flush">
             <div className="empty-state sm">
               <p className="muted">등록된 협연 기록이 없습니다</p>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -171,7 +171,7 @@ function MusicianPicker({ navigate }) {
             {list.map((m) => (
               // m.id: 백엔드 숫자형 PK — playdb 이동 시 uuid 파라미터로 전달
               <div key={m.id} className="collab-list-row" onClick={() => navigate('playdb', { uuid: m.id })}>
-                <Avatar name={m.stageName} size="md" />
+                <Avatar name={m.stageName} size="md" profileImageUrl={m.profileImageUrl} />
                 <div className="col grow" style={{ gap: 2 }}>
                   <b style={{ fontSize: 14 }}>{m.stageName}</b>
                   <span className="muted" style={{ fontSize: 12 }}>{m.position}</span>

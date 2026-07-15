@@ -687,6 +687,23 @@ button.pill:hover { opacity: 0.85; }
 .mcard { background: var(--paper); border: 1px solid var(--line); border-radius: 14px; padding: 20px 16px; display: flex; flex-direction: column; align-items: center; cursor: pointer; transition: all 0.14s; }
 .mcard:hover { border-color: var(--wine); box-shadow: 0 8px 24px rgba(67,20,24,0.10); transform: translateY(-2px); }
 
+/* 협연 관계도 미리보기 — 원형 그래프 대신 카드 그리드로 표시.
+   인원이 몇 명이든(예: 20명) 겹치거나 밖으로 삐져나가지 않고 줄바꿈되며
+   세로로 자연스럽게 늘어남 (이름을 .collab-grid가 아닌 .partner-grid로 지은 이유:
+   .collab-grid는 아래 '협연자' 섹션에서 이미 다른 레이아웃으로 쓰이고 있어 이름이 겹치면
+   나중에 선언된 규칙이 이겨서 의도한 4열이 아니라 3열로 깨짐) */
+.partner-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.partner-card {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 8px 4px; text-align: center;
+  background: var(--paper); border: 1px solid var(--line); border-radius: 10px;
+  cursor: pointer; transition: all 0.12s;
+}
+.partner-card:hover { border-color: var(--wine); box-shadow: 0 6px 16px rgba(67,20,24,0.10); transform: translateY(-2px); }
+.partner-card .cc-name { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+/* 배경/글자색은 JS에서 협연 횟수 비율에 따라 인라인으로 지정 (누가 가장 많이 협연했는지 한눈에 구분) */
+.partner-card .cc-count { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
+
 /* ─── Public Profile ──────────────────────────────────────── */
 .profile-hero { display: flex; gap: 20px; align-items: flex-start; padding: 28px 0 20px; border-bottom: 1px solid var(--line); margin-bottom: 20px; flex-wrap: wrap; }
 .stat-row { display: flex; gap: 0; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; margin-bottom: 24px; }
@@ -700,6 +717,26 @@ button.pill:hover { opacity: 0.85; }
 .link-chip { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px; font-size: 12px; color: var(--ink-2); text-decoration: none; transition: all 0.1s; }
 .link-chip:hover { border-color: var(--wine); color: var(--wine); }
 .link-chip.full { width: 100%; justify-content: center; }
+
+/* 뮤지션 공개 프로필 페이지 전용 확대 스타일 — 다른 페이지(대시보드, 이력서 등)와 공유하는
+   .section-label, .av.xl, .link-chip 등을 건드리지 않기 위해 .public-profile로 범위를 한정 */
+/* 협연 관계도 카드가 한 줄에 4개 들어갈 여유를 주기 위해 왼쪽(공연 이력)보다 오른쪽 컬럼을 넓게 */
+.public-profile .two-col { grid-template-columns: 0.85fr 1.15fr; }
+.public-profile .av.xl { width: 152px; height: 152px; font-size: 52px; }
+.public-profile .h2 { font-size: 32px; }
+.public-profile .role-label { font-size: 13px; }
+.public-profile .bio { font-size: 16px; }
+.public-profile .section-label { font-size: 14px; }
+.public-profile .link-chip { font-size: 14px; padding: 6px 14px; gap: 7px; }
+.public-profile .btn.sm { font-size: 15px; height: 34px; padding: 0 16px; }
+.public-profile .coming-soon-label { font-size: 15px; }
+
+/* 통계 박스(총 공연/협연 뮤지션) — 세로로 크게 차지하던 레이아웃을 숫자+라벨 가로 배치로 압축 */
+.public-profile .stat-row { margin-bottom: 20px; }
+.public-profile .stat { flex-direction: row; align-items: baseline; justify-content: center; gap: 8px; padding: 12px; }
+.public-profile .stat .sv { font-size: 26px; }
+.public-profile .stat .sk { font-size: 14px; margin-top: 0; }
+.public-profile .coming-soon-sub { font-size: 14px; }
 
 /* ─── Venue Map ───────────────────────────────────────────── */
 .venue-map { position: relative; height: 320px; background: #f0ece6; border-radius: 14px; overflow: hidden; border: 1px solid var(--line); margin-bottom: 8px; }
