@@ -10,6 +10,9 @@ export default function ScreenDirectory({ navigate, auth, onLoginClick }) {
   // musicians: 백엔드에서 받아온 뮤지션 목록 (초기값 빈 배열)
   const [musicians, setMusicians] = useState([]);
 
+  // performanceCount: 통계 바의 "등록된 공연" 수 — 목록 전체를 렌더링할 필요는 없으니 개수만 저장
+  const [performanceCount, setPerformanceCount] = useState(null);
+
   // loading: API 응답 대기 중 여부
   const [loading, setLoading] = useState(true);
 
@@ -42,6 +45,11 @@ export default function ScreenDirectory({ navigate, auth, onLoginClick }) {
       .then((data) => setMusicians(data))     // 성공: 배열을 musicians 상태에 저장
       .catch(() => {})                        // 실패: 빈 목록 유지
       .finally(() => setLoading(false));      // 성공/실패 무관하게 로딩 종료
+
+    // 통계 바의 "등록된 공연" 수 — 전체 목록을 받아서 길이만 씀 (별도 count API가 없음)
+    api.getPerformances()                     // GET /api/performances
+      .then((data) => setPerformanceCount(data.length))
+      .catch(() => {});                       // 실패해도 "—"로 남겨두면 되므로 무시
   }, []); // 빈 배열: 마운트 시 1회만 실행
 
   // 검색 + 악기 필터를 조합해서 보여줄 목록 계산
@@ -103,10 +111,10 @@ export default function ScreenDirectory({ navigate, auth, onLoginClick }) {
             )}
           </div>
 
-          {/* 통계 바 — 실시간 뮤지션 수만 표시, 나머지는 추후 집계 API 구현 예정 */}
+          {/* 통계 바 — 뮤지션 수/공연 수는 실제 데이터, 협업 엣지는 집계 API가 없어 준비 중 */}
           <div className="statbar">
             <div className="stat"><b>{musicians.length}</b><span>뮤지션</span></div>
-            <div className="stat"><b>—</b><span>등록된 공연</span></div>   {/* 공연 수 집계 API 준비 중 */}
+            <div className="stat"><b>{performanceCount ?? '—'}</b><span>등록된 공연</span></div>
             <div className="stat"><b>—</b><span>협업 엣지</span></div>     {/* 인맥 집계 API 준비 중 */}
           </div>
         </div>
