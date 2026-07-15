@@ -496,6 +496,63 @@ button.pill:hover { opacity: 0.85; }
 
 /* ─── Concerts ────────────────────────────────────────── */
 .concert-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 18px; }
+
+/* 공연 일정 — 월별 달력 뷰 */
+/* 공연장 범례 — 달력 칩과 똑같은 배경/글자색 조합(작은 칩 모양)으로 표시해서
+   "이 색 = 이 공연장"이 바로 매칭되도록 함. <button>이라 브라우저 기본 테두리/배경을 초기화 */
+.cal-legend { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.cal-legend-item {
+  border: 2px solid transparent; padding: 4px 10px; border-radius: 6px;
+  font-size: 12px; font-weight: 600; font-family: inherit;
+  cursor: pointer; transition: opacity 0.12s, transform 0.12s;
+}
+.cal-legend-item:hover { transform: translateY(-1px); }
+.cal-legend-item.selected { border-color: currentColor; } /* 현재 필터링 중인 공연장 표시 */
+
+.cal-weekdays {
+  display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); /* minmax(0,1fr): 내용이 길어도 7등분을 넘지 않게 강제 */
+  border: 1px solid var(--line); border-bottom: 0; border-radius: 10px 10px 0 0; overflow: hidden;
+}
+.cal-weekday {
+  padding: 8px 0; text-align: center; font-size: 12px; font-weight: 700; color: var(--mute);
+  background: var(--paper-2); border-right: 1px solid var(--line);
+}
+.cal-weekday:last-child { border-right: 0; }
+.cal-grid {
+  display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); /* minmax(0,1fr): 칸이 글자 때문에 늘어나 7등분이 깨지는 것 방지 */
+  border: 1px solid var(--line); border-radius: 0 0 10px 10px; overflow: hidden;
+}
+.cal-day {
+  min-width: 0; /* 그리드 자식의 기본값(min-width: auto)이 긴 글자 때문에 칸을 넓히는 것을 막음 */
+  min-height: 96px; padding: 6px; background: var(--paper);
+  border-right: 1px solid var(--line); border-bottom: 1px solid var(--line);
+  display: flex; flex-direction: column; gap: 4px; overflow: hidden;
+}
+.cal-day:nth-child(7n) { border-right: 0; } /* 매 7번째(토요일) 칸은 오른쪽 테두리 생략 */
+.cal-day.empty { background: var(--paper-2); }
+.cal-day.today { background: var(--wine-soft); }
+.cal-day-num { font-size: 12px; font-weight: 700; color: var(--ink-2); flex-shrink: 0; }
+.cal-day.today .cal-day-num { color: var(--wine); }
+.cal-chips { display: flex; flex-direction: column; gap: 2px; min-width: 0; overflow: hidden; }
+.cal-chip {
+  display: flex; align-items: center; gap: 4px;
+  min-width: 0; /* flex 자식도 그리드와 같은 이유로 필요 — 없으면 ellipsis가 동작하지 않음 */
+  font-size: 10px; padding: 2px 5px; border-radius: 4px; cursor: pointer;
+  transition: filter 0.1s;
+  /* 배경/글자색은 JS에서 공연장별로 인라인 지정 (동그라미보다 칸 전체를 물들이는 게 더 잘 구분돼서) */
+}
+.cal-chip:hover { filter: brightness(0.93); }
+.cal-chip-time { font-family: 'JetBrains Mono', monospace; opacity: 0.75; flex-shrink: 0; }
+.cal-chip-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.cal-chip.past { opacity: 0.55; }               /* 지난 공연 — 색은 유지하되 흐리게 */
+.cal-chip.cancelled { opacity: 0.55; text-decoration: line-through; }
+.cal-chip.more { background: transparent !important; color: var(--mute); cursor: default; text-align: center; }
+
+@media (max-width: 640px) {
+  .cal-day { min-height: 64px; }
+  .cal-chip { font-size: 9px; }
+  .cal-day-num { font-size: 11px; }
+}
 .concert-card {
   background: var(--paper); border: 1px solid var(--line); border-radius: 14px; overflow: hidden;
   cursor: pointer; transition: border-color 0.12s, box-shadow 0.12s, transform 0.12s;
