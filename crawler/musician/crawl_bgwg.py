@@ -144,6 +144,12 @@ def extract_performance_rows(html):
 
     입력값: html = 스케줄 페이지 전체 HTML 문자열
     반환값: [{'멤버': ..., '이름': ..., ...}, ...] 형태의 리스트
+
+    밑줄(_)로 시작하는 특수 키 2개 (공연 크롤러가 사용):
+      '_날짜' = 노션 날짜 속성의 원본 딕셔너리
+                (예: {'start_date': '2026-07-14', 'start_time': '19:00', ...})
+                일반 텍스트 변환으로는 날짜가 '‣' 기호로만 나와서 원본을 따로 담는다.
+      '_id'   = 이 행(공연)의 노션 페이지 고유 id → 개별 공연 페이지 URL을 만들 때 사용
     """
 
     # HTML 안의 모든 <script>...</script> 내용을 뽑는다
@@ -184,12 +190,21 @@ def extract_performance_rows(html):
         if value.get('type') == 'page' and value.get('parent_table') == 'collection':
             properties = value.get('properties', {})
 
+            # 이 행의 노션 페이지 id (공연 크롤러가 개별 페이지 URL을 만드는 데 씀)
+            row = {'_id': value.get('id')}
+
             # 각 열의 값을 사람이 읽는 텍스트로 변환
-            row = {}
             for col_id, rich_text in properties.items():
                 col_name = id_to_name.get(col_id, col_id)
                 # 노션 rich text는 [[텍스트조각, ...], ...] 구조 → 텍스트만 이어붙임
                 row[col_name] = ''.join(seg[0] for seg in rich_text if seg)
+
+                # 날짜 열은 텍스트로 바꾸면 '‣' 기호만 남고 실제 날짜가 사라진다.
+                # 실제 날짜는 조각 안에 ['‣', [['d', {날짜 딕셔너리}]]] 형태로 숨어 있어서,
+                # 'd'(date) 표식이 붙은 조각을 찾으면 그 원본 딕셔너리를 '_날짜' 키에 담아준다.
+                for seg in rich_text:
+                    if len(seg) > 1 and seg[1] and seg[1][0][0] == 'd':
+                        row['_날짜'] = seg[1][0][1]
 
             rows.append(row)
 
