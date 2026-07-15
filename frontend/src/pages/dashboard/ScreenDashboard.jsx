@@ -20,6 +20,8 @@ function isUpcoming(p) {
 export default function ScreenDashboard({ navigate, me }) {
   // performances: 내 전체 공연 목록
   const [performances, setPerformances] = useState([]);
+  // graphEdgeCount: 협연 뮤지션 수 — api.getMusicianGraph()의 edges 개수
+  const [graphEdgeCount, setGraphEdgeCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -27,8 +29,15 @@ export default function ScreenDashboard({ navigate, me }) {
       setLoading(false);
       return;
     }
-    api.getMusicianPerformances(me.musicianId)   // GET /api/performances/musician/{id}
-      .then(setPerformances)
+    // 공연 목록 + 인맥 관계도를 동시에 호출 (Promise.all: 둘 다 완료될 때까지 대기)
+    Promise.all([
+      api.getMusicianPerformances(me.musicianId), // GET /api/performances/musician/{id}
+      api.getMusicianGraph(me.musicianId),        // GET /api/musicians/{id}/graph
+    ])
+      .then(([perfs, graph]) => {
+        setPerformances(perfs);
+        setGraphEdgeCount(graph.edges?.length || 0); // edges: 협연 뮤지션 목록
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [me?.musicianId]);
@@ -79,8 +88,7 @@ export default function ScreenDashboard({ navigate, me }) {
             <span className="sc-key">예정 공연</span>
           </div>
           <div className="stat-card" onClick={() => navigate('graph-mine')}>
-            {/* 협연 뮤지션 수: 그래프 API 별도 호출 필요 — 준비 중 */}
-            <span className="sc-val">—</span>
+            <span className="sc-val">{loading ? '—' : graphEdgeCount}</span>
             <span className="sc-key">협연 뮤지션</span>
           </div>
         </div>

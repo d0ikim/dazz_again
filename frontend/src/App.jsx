@@ -198,7 +198,7 @@ export default function App() {
       case 'profile-public': return <ScreenPublicProfile uuid={routeParams.uuid} navigate={navigate} auth={auth} />;
       case 'venues': return <ScreenVenues navigate={navigate} />;
       case 'concerts': return <ScreenConcerts navigate={navigate} />;
-      case 'concert-detail': return <ScreenConcertDetail concertId={routeParams.concertId} navigate={navigate} />;
+      case 'concert-detail': return <ScreenConcertDetail concertId={routeParams.concertId} navigate={navigate} onToast={showToast} />;
       // playdb: 인맥지도 — uuid는 뮤지션의 숫자형 DB id (없으면 선택 화면)
       case 'playdb': return <ScreenPlayDB uuid={routeParams.uuid} navigate={navigate} />;
       // me를 전달해 실제 뮤지션 이름/포지션을 이력서에 표시

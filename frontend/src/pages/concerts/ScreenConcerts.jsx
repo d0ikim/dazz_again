@@ -133,11 +133,6 @@ export default function ScreenConcerts({ navigate }) {
                   <span className="muted" style={{ fontSize: 12 }}><Icon name="building" size={11} /> {p.venue?.name}</span>
                   <span className="muted" style={{ fontSize: 12 }}><Icon name="clock" size={11} /> {fmtTime(p.startTime)}</span>
                 </div>
-
-                <div className="coming-soon-inline">
-                  <Icon name="users" size={11} color="var(--mute)" />
-                  <span>라인업 정보 준비 중</span>
-                </div>
               </div>
 
               <Icon name="arrow-right" size={16} color="var(--mute)" style={{ flexShrink: 0 }} />
