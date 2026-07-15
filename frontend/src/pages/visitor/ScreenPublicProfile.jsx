@@ -3,14 +3,14 @@ import { useState, useEffect } from 'react'; // useState: 상태 관리 / useEff
 import Avatar from '../../components/Avatar'; // 이니셜 아바타 컴포넌트
 import Icon from '../../components/Icon';     // 아이콘 컴포넌트
 import ShowRow from './ShowRow';              // 공연 한 줄 컴포넌트
-import GraphView from './GraphView';          // 인맥 관계도 컴포넌트
 import { api } from '../../api/client';      // 백엔드 API 호출 함수 모음
+import { getWeightBadgeStyle } from '../../utils/weightColor'; // 협연 횟수에 따른 배지 색 계산
 
 // SNS 링크 칩 컴포넌트
 function LinkChip({ icon, label, href }) {
   return (
     <a className="link-chip" href={href || '#'} target="_blank" rel="noopener noreferrer">
-      <Icon name={icon} size={13} /> {label}
+      <Icon name={icon} size={16} /> {label}
     </a>
   );
 }
@@ -43,11 +43,16 @@ export default function ScreenPublicProfile({ uuid, navigate, auth }) {
 
   const [loading, setLoading] = useState(true);
 
+  // 협연 관계도 카드 그리드 — 한 줄에 4명씩 5줄(20명)까지 기본 표시, 그 이상은 "더보기"로 펼침
+  const [showAllPartners, setShowAllPartners] = useState(false);
+  const PARTNERS_PAGE_SIZE = 20;
+
   // uuid가 바뀔 때마다 (다른 뮤지션 프로필로 이동) API를 새로 호출
   useEffect(() => {
     if (!uuid) return;
 
     setLoading(true);
+    setShowAllPartners(false); // 다른 뮤지션 프로필로 이동하면 더보기 상태 초기화
 
     // 세 API를 동시에 호출해 속도를 높임 (Promise.all: 모두 완료될 때까지 대기)
     Promise.all([
@@ -80,9 +85,20 @@ export default function ScreenPublicProfile({ uuid, navigate, auth }) {
   // auth.userId: 현재 로그인한 유저의 DB id
   const isMe = auth?.userId && musician.userId === auth.userId;
 
+  // graphEdges(a-b-weight 쌍)에서 "나(uuid) 기준 상대 뮤지션" 목록만 뽑아 협연 횟수 많은 순으로 정렬
+  // 인원이 몇 명이든(예: 20명) 원형 그래프처럼 겹치거나 밖으로 삐져나가지 않고
+  // 그리드로 줄바꿈되며 카드 개수만큼 세로로 늘어나도록 표시
+  const centerId = String(uuid);
+  const partners = graphEdges
+    .map((e) => {
+      const otherId = e.a === centerId ? e.b : e.a;
+      return { id: otherId, musician: graphMusicians[otherId], weight: e.w };
+    })
+    .sort((a, b) => b.weight - a.weight);
+
   return (
     <div className="main">
-      <div className="pad">
+      <div className="pad public-profile">
         <a className="back-link" onClick={() => navigate('directory')}>
           <Icon name="arrow-left" size={15} /> 뮤지션 목록
         </a>
@@ -99,10 +115,11 @@ export default function ScreenPublicProfile({ uuid, navigate, auth }) {
                 <span className="muted">{musician.realName}</span>
               )}
             </div>
-            {/* position: 악기 (백엔드 필드명, 예: PIANO, VOCAL) */}
-            <span className="role-label">{musician.position}</span>
-            {/* bio: 소개글 — 값이 있을 때만 표시 */}
-            {musician.bio && <p className="bio">{musician.bio}</p>}
+            {/* position: 악기 (백엔드 필드명, 예: PIANO, VOCAL) — 이름(세리프 폰트)보다 왼쪽으로
+                치우쳐 보여서 margin-left로 보정 */}
+            <span className="role-label" style={{ marginLeft: 6 }}>{musician.position}</span>
+            {/* bio: 소개글 — 값이 있을 때만 표시, 위와 같은 이유로 보정 */}
+            {musician.bio && <p className="bio" style={{ marginLeft: 6 }}>{musician.bio}</p>}
             {/* snsUrl: 단일 SNS URL (백엔드에 하나만 저장) */}
             {musician.snsUrl && (
               <div className="row" style={{ gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
@@ -153,7 +170,7 @@ export default function ScreenPublicProfile({ uuid, navigate, auth }) {
             <section>
               <h3 className="section-label">앨범 참여</h3>
               <div className="coming-soon-box">
-                <Icon name="disc" size={20} color="var(--mute)" />
+                <Icon name="disc" size={24} color="var(--mute)" />
                 <span className="coming-soon-label">앨범 정보 준비 중</span>
                 <span className="coming-soon-sub">앨범 참여 이력은 곧 제공될 예정입니다</span>
               </div>
@@ -166,16 +183,32 @@ export default function ScreenPublicProfile({ uuid, navigate, auth }) {
               <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                 <h3 className="section-label" style={{ margin: 0 }}>협연 관계도</h3>
                 <button className="btn ghost sm" onClick={() => navigate('playdb', { uuid })}>
-                  전체 보기 <Icon name="arrow-right" size={13} />
+                  전체 보기 <Icon name="arrow-right" size={15} />
                 </button>
               </div>
-              <GraphView
-                edges={graphEdges}
-                musicians={graphMusicians}
-                center={String(uuid)}
-                navigate={navigate}
-                size="medium"
-              />
+              <div className="partner-grid">
+                {(showAllPartners ? partners : partners.slice(0, PARTNERS_PAGE_SIZE)).map(({ id, musician: m, weight }) => (
+                  <div
+                    key={id}
+                    className="partner-card"
+                    onClick={() => navigate('profile-public', { uuid: Number(id) })}
+                  >
+                    <Avatar name={m?.stageName} size="md" profileImageUrl={m?.profileImageUrl} />
+                    <b className="cc-name">{m?.stageName}</b>
+                    <span className="cc-count" style={getWeightBadgeStyle(weight)}>{weight}회</span>
+                  </div>
+                ))}
+              </div>
+              {/* 20명(4x5) 넘게 있으면 더보기 버튼으로 나머지를 펼침 */}
+              {!showAllPartners && partners.length > PARTNERS_PAGE_SIZE && (
+                <button
+                  className="btn ghost sm full"
+                  style={{ marginTop: 10 }}
+                  onClick={() => setShowAllPartners(true)}
+                >
+                  더보기 ({partners.length - PARTNERS_PAGE_SIZE}명) <Icon name="arrow-right" size={13} />
+                </button>
+              )}
             </section>
           )}
         </div>

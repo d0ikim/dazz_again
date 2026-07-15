@@ -47,6 +47,9 @@ export const api = {
   // id: 뮤지션의 DB 고유 번호 (숫자, 예: 1)
   getMusician: (id) => request(`/api/musicians/${id}`),
 
+  // 활동명 또는 악기로 뮤지션 검색 — GET /api/musicians/search?type=stageName|position&keyword=...
+  searchMusicians: (type, keyword) => request(`/api/musicians/search?${new URLSearchParams({ type, keyword })}`),
+
   // 특정 뮤지션을 중심으로 함께 공연한 협연자 목록과 협연 횟수를 반환
   getMusicianGraph: (id) => request(`/api/musicians/${id}/graph`),
 
@@ -61,8 +64,14 @@ export const api = {
   // params가 없으면 URLSearchParams(undefined)가 빈 문자열('')을 반환하므로 안전하게 호출 가능
   getVenues: (params) => request(`/api/venues?${new URLSearchParams(params)}`),
 
+  // 이름 또는 위치로 공연장 검색 — GET /api/venues/search?type=name|location&keyword=...
+  searchVenues: (type, keyword) => request(`/api/venues/search?${new URLSearchParams({ type, keyword })}`),
+
   // ── 공연 ────────────────────────────────────────────────────────────────
   getPerformances: (params) => request(`/api/performances?${new URLSearchParams(params)}`),
+
+  // 공연명 또는 장르로 공연 검색 — GET /api/performances/search?type=title|genre&keyword=...
+  searchPerformances: (type, keyword) => request(`/api/performances/search?${new URLSearchParams({ type, keyword })}`),
 
   // id로 공연 단건 조회 (공연 상세 페이지에서 사용)
   getPerformance: (id) => request(`/api/performances/${id}`),

@@ -122,6 +122,34 @@ ABBREVIATION_MAP = {
     'hm': 'HARMONICA',
 }
 
+# 이름 하나로 보기엔 너무 긴 '순한글 + 공백' 문자열인지 판별하는 패턴.
+# 실제로 겪은 문제: 관리자가 'Vo.조남준,서성은'처럼 쉼표로 이름을 구분해야 하는데
+# 가끔 'Vo.조남준 이나빈 팽한솔 서성은'처럼 쉼표 없이 띄어쓰기로만 여러 명을 적어서
+# split(',')로는 안 나뉘고 4명이 한 명의 이름("조남준 이나빈 팽한솔 서성은")으로 잘못 저장됨.
+# 국내 인명은 보통 2~4자, 길어도 5자 정도이므로 공백 포함 6자를 넘으면 의심 대상으로 본다.
+MULTI_NAME_SUSPECT_REGEX = re.compile(r'^[가-힣\s]+$')
+SINGLE_NAME_MAX_LENGTH = 6
+
+def split_possibly_merged_names(raw_name):
+    """
+    쉼표로 못 나뉜 '이름 여러 개가 붙은 문자열'을 의심하고 필요하면 공백 기준으로 쪼갠다.
+
+    입력값: raw_name = split(',')로 한 번 나눈 뒤의 이름 조각 (공백이 남아있을 수 있음)
+    반환값: 이름 문자열의 리스트 (의심스러운 경우가 아니면 원본 그대로 1개짜리 리스트)
+    """
+    # 공백을 뺀 순수 글자 수 — 여러 명의 이름을 합친 문자열은 이 길이가 유독 길다
+    letters_only_length = len(raw_name.replace(' ', ''))
+
+    is_suspicious = (
+        ' ' in raw_name                                   # 공백으로 나뉜 여러 토큰인지
+        and letters_only_length > SINGLE_NAME_MAX_LENGTH   # 한 사람 이름치고 너무 긴지
+        and MULTI_NAME_SUSPECT_REGEX.match(raw_name)       # 영문/숫자 없이 순한글+공백인지
+    )
+    if is_suspicious:
+        return [part for part in raw_name.split() if part]
+
+    return [raw_name]
+
 # ==================== 달력 페이지에서 공연 목록 수집 함수 ====================
 
 def fetch_month_events(year, month):
@@ -181,7 +209,10 @@ def fetch_month_events(year, month):
             vocals = []
             vocal_match = VOCAL_SUFFIX_REGEX.search(rest)
             if vocal_match:
-                vocals = [v.strip() for v in vocal_match.group(1).split(',') if v.strip()]
+                for v in vocal_match.group(1).split(','):
+                    v = v.strip()
+                    if v:
+                        vocals.extend(split_possibly_merged_names(v))
                 rest = VOCAL_SUFFIX_REGEX.sub('', rest).strip()
 
             # 앞의 '2부' 표기를 떼어 세트 정보로 분리한다
@@ -246,11 +277,14 @@ def fetch_lineup(detail_url):
         if position is None:
             continue
 
-        # 이름 부분: 'Vo.조남준,서성은'처럼 여러 명이면 쉼표로 나눈다
+        # 이름 부분: 'Vo.조남준,서성은'처럼 여러 명이면 쉼표로 나눈다.
+        # 쉼표 없이 'Vo.조남준 이나빈 팽한솔 서성은'처럼 띄어쓰기로만 적힌 경우를 대비해
+        # split_possibly_merged_names()로 한 번 더 검사한다
         for name in match.group(2).split(','):
             name = name.strip()
             if name:
-                lineup.append((position, name))
+                for real_name in split_possibly_merged_names(name):
+                    lineup.append((position, real_name))
 
     return lineup
 

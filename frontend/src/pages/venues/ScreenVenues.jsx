@@ -14,8 +14,9 @@ export default function ScreenVenues({ navigate }) {
   // selected: 현재 선택된 공연장의 id (클릭하면 상세 정보 펼침, 다시 클릭하면 null로 닫힘)
   const [selected, setSelected] = useState(null);
 
-  // district: 현재 선택된 구 필터 (예: '마포구', '전체')
-  const [district, setDistrict] = useState('전체');
+  // district: 현재 선택된 지역 필터 — 서울은 구 단위('마포구' 등), 그 외는 시/도 단위('부산' 등)
+  // 기본값을 '서울'로 둬서 처음 들어왔을 때 지도가 전국이 아니라 서울 위주로 확대되어 보이게 함
+  const [district, setDistrict] = useState('서울');
 
   // query: 검색창에 입력된 공연장명 검색어 (실시간 필터링)
   const [query, setQuery] = useState('');
@@ -29,24 +30,62 @@ export default function ScreenVenues({ navigate }) {
       .finally(() => setLoading(false));
   }, []);
 
-  // location 문자열에서 구 이름을 추출하는 함수
+  // location 문자열의 첫 단어에서 시/도 단위를 뽑아 표준 이름으로 정규화하는 함수
+  // 예: "서울특별시", "서울시", "서울" → "서울" / "제주특별자치도" → "제주" / "경기" → "경기"
+  const extractRegion = (location) => {
+    const first = location?.split(' ')[0] || '';
+    return first.replace(/(특별자치도|특별자치시|광역시|특별시|자치도|도|시)$/, '') || first || '기타';
+  };
+
+  // location 문자열에서 구 이름을 추출하는 함수 (서울 전용 — 서울만 구 단위로 세분화해서 보여줌)
   // 예: "서울시 마포구 서교동 358-1" → "마포구"
-  // 정규식 /([가-힣]+구)/: 한글로 이루어진 '구'로 끝나는 단어를 찾음
   const extractDistrict = (location) => {
     const match = location?.match(/([가-힣]+구)/);
     return match ? match[1] : '기타'; // '구'가 없으면 '기타'로 분류
   };
 
-  // 공연장 목록에서 중복 없이 구 이름 목록을 만듦
-  // new Set(): 중복 제거 / 스프레드 연산자(...)로 다시 배열로 변환
-  const districts = ['전체', ...new Set(venues.map((v) => extractDistrict(v.location)))];
+  // 필터 칩/필터링 기준값 하나로 통일 — 서울은 구 단위, 그 외 지역은 시/도 단위로 묶어서
+  // 지역 필터가 너무 잘게 쪼개지지 않도록 함 (부산 25곳이 구별로 다 나뉘면 칩이 지나치게 많아짐)
+  const filterKeyOf = (location) => {
+    const region = extractRegion(location);
+    return region === '서울' ? extractDistrict(location) : region;
+  };
 
-  // 선택된 구 + 검색어로 공연장 필터링 (두 조건 모두 만족해야 표시)
+  // 공연장 목록에서 중복 없이 필터 목록을 만듦
+  // '전체' → '서울'(서울 전체를 한 번에 보는 칩) → 서울 개별 구들 → 그 외 지역(시/도 단위) 순서로 배치
+  // new Set(): 중복 제거 / 스프레드 연산자(...)로 다시 배열로 변환
+  const districts = useMemo(() => {
+    const seoulDistricts = new Set();
+    const otherRegions = new Set();
+    let hasSeoul = false;
+    venues.forEach((v) => {
+      const region = extractRegion(v.location);
+      if (region === '서울') {
+        hasSeoul = true;
+        seoulDistricts.add(extractDistrict(v.location));
+      } else {
+        otherRegions.add(region);
+      }
+    });
+    return [
+      '전체',
+      ...(hasSeoul ? ['서울'] : []),
+      ...[...seoulDistricts].sort(),
+      ...[...otherRegions].sort(),
+    ];
+  }, [venues]);
+
+  // 선택된 지역 + 검색어로 공연장 필터링 (두 조건 모두 만족해야 표시)
+  // '서울' 칩은 서울의 모든 구를 통틀어 매칭하고(extractRegion 비교), 개별 구/타 지역 칩은
+  // 그 값 하나만 정확히 매칭함(filterKeyOf 비교) — 이 둘을 OR로 묶어 하나의 로직으로 처리
   // useMemo: district/query/venues가 실제로 바뀔 때만 새 배열을 만듦 — 매 렌더링마다 새 배열을 만들면
   // VenueMap의 마커 그리기 useEffect가 (내용은 같아도 배열 참조가 달라졌다는 이유로) 계속 재실행돼서
   // 마커를 클릭할 때마다 지도가 "전체 보기"로 리셋됐다가 다시 이동하는 버벅임(튕김)이 생김
   const list = useMemo(() => venues.filter((v) => {
-    const matchDistrict = district === '전체' || extractDistrict(v.location) === district; // 구 필터 만족 여부
+    const matchDistrict =
+      district === '전체' ||
+      extractRegion(v.location) === district || // 예: district === '서울'이면 서울 전체
+      filterKeyOf(v.location) === district;      // 예: district === '마포구'/'부산'이면 그 값만
     const matchQuery = query === '' || v.name.toLowerCase().includes(query.toLowerCase()); // 이름 검색 만족 여부
     return matchDistrict && matchQuery; // 둘 다 만족하면 표시
   }), [venues, district, query]);
@@ -97,8 +136,8 @@ export default function ScreenVenues({ navigate }) {
           </div>
         </div>
 
-        {/* 구 단위 필터 칩 버튼 목록 */}
-        <div className="chip-group" style={{ marginBottom: 16 }}>
+        {/* 지역 필터 칩 버튼 목록 — 서울은 구 단위, 그 외 지역은 시/도 단위로 큼직하게 묶어서 표시 */}
+        <div className="chip-group" style={{ marginBottom: 10 }}>
           {districts.map((d) => (
             <button
               key={d}
@@ -109,6 +148,9 @@ export default function ScreenVenues({ navigate }) {
             </button>
           ))}
         </div>
+
+        {/* 현재 필터(지역+검색어) 기준으로 몇 곳이 검색됐는지 안내 */}
+        <p className="muted" style={{ fontSize: 13, marginBottom: 16 }}>총 {list.length}곳</p>
 
         {/* 공연장 카드 목록 */}
         <div className="venue-list">
