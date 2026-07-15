@@ -58,9 +58,11 @@ DB_DATABASE = os.getenv('DB_DATABASE')   # PostgreSQL 데이터베이스명
 # crawler/.env에서 읽은 값들
 KAKAO_LOCAL_API_KEY = os.getenv('KAKAO_LOCAL_API_KEY')  # Kakao Local API 키
 
-# PostgreSQL 데이터베이스 접속 정보 (고정값)
-DB_HOST = 'localhost'     # PostgreSQL 서버 주소 (로컬 컴퓨터)
-DB_PORT = 5432            # PostgreSQL 포트 번호 (기본값)
+# PostgreSQL 서버 주소/포트도 환경변수에서 읽기
+# os.getenv('DB_HOST', 'localhost') = DB_HOST 환경변수가 있으면 그 값, 없으면 'localhost'
+# → backend/.env에 DB_HOST를 Render 주소로 넣으면 크롤러도 자동으로 Render DB에 연결됨
+DB_HOST = os.getenv('DB_HOST', 'localhost')   # PostgreSQL 서버 주소
+DB_PORT = os.getenv('DB_PORT', '5432')        # PostgreSQL 포트 번호
 
 # ==================== 데이터베이스 연결 함수 ====================
 

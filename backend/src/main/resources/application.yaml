@@ -6,7 +6,10 @@ spring:
     # ${DB_HOST:localhost} : DB_HOST 환경변수가 있으면 그 값, 없으면 localhost 사용
     # 로컬 개발 땐 DB_HOST를 안 정해놨으니 지금까지처럼 localhost로 접속되고,
     # Render처럼 실제 서버에 올릴 땐 DB_HOST=Render가 알려준 DB 주소로 설정하면 그대로 연결됨
-    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_DATABASE}
+    # ?sslmode=${DB_SSLMODE:prefer} : SSL 접속 모드도 환경변수로 제어
+    # prefer = SSL을 먼저 시도하고 안 되면 평문으로 접속 (로컬은 평문, Render는 SSL로 자동 처리)
+    # Render 같은 클라우드 DB는 외부 접속 시 SSL이 필수라서 이 설정이 없으면 연결이 거부될 수 있음
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_DATABASE}?sslmode=${DB_SSLMODE:prefer}
     username: ${DB_USER}                         # DB 접속 계정은 환경변수로 관리
     password: ${DB_PASSWORD}                     # 비밀번호는 환경변수로 관리 (코드에 직접 쓰면 위험)
     driver-class-name: org.postgresql.Driver     # PostgreSQL 드라이버 사용
