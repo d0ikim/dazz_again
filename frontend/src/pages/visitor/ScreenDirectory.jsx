@@ -167,7 +167,8 @@ export default function ScreenDirectory({ navigate, auth, onLoginClick }) {
                 {m.profileImageUrl ? (
                   <img src={m.profileImageUrl} alt={`${m.stageName} 프로필`} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                 ) : (
-                  <div className="imgph">{m.stageName} 사진</div>
+                  // 사진이 없는 뮤지션은 "OO 사진" 텍스트 대신 기본 프로필 아이콘(사람 실루엣) 표시
+                  <div className="imgph"><Icon name="user" size={44} color="var(--mute-2)" stroke={1.3} /></div>
                 )}
               </div>
               <div className="meta">
