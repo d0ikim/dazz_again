@@ -126,7 +126,15 @@ export default function ScreenConcerts({ navigate }) {
     return [...map.values()].sort((a, b) => a.id - b.id);
   }, [performances]);
 
-  const monthLabel = `${viewDate.getFullYear()}년 ${viewDate.getMonth() + 1}월`;
+  // 연도 드롭다운에 보여줄 연도 목록 — 등록된 공연이 실제로 있는 연도들 + 올해 + 현재 보고 있는 연도
+  // (화살표로 데이터 범위 밖까지 이동해도 드롭다운에 현재 연도가 항상 존재하도록 viewDate 연도 포함)
+  const yearOptions = useMemo(() => {
+    const years = new Set([today.getFullYear(), viewDate.getFullYear()]);
+    performances.forEach((p) => {
+      if (p.startTime) years.add(new Date(p.startTime).getFullYear());
+    });
+    return [...years].sort((a, b) => a - b);
+  }, [performances, viewDate, today]);
 
   // 이전/다음 달로 이동 — month에 -1/+1을 넣으면 Date가 연도 넘어가는 것까지 알아서 계산해줌
   const goPrevMonth = () => setViewDate((d) => new Date(d.getFullYear(), d.getMonth() - 1, 1));
@@ -169,7 +177,25 @@ export default function ScreenConcerts({ navigate }) {
             <button className="btn ghost icon" onClick={goPrevMonth} aria-label="이전 달">
               <Icon name="arrow-left" size={16} />
             </button>
-            <h2 className="h3 serif" style={{ margin: 0, minWidth: 120, textAlign: 'center' }}>{monthLabel}</h2>
+            {/* 연/월 드롭다운 — 제목 글씨를 클릭하면 원하는 연도·월로 바로 이동 (화살표 반복 클릭 불필요) */}
+            <select
+              className="cal-select"
+              value={viewDate.getFullYear()}
+              onChange={(e) => setViewDate(new Date(Number(e.target.value), viewDate.getMonth(), 1))}
+              aria-label="연도 선택"
+            >
+              {yearOptions.map((y) => <option key={y} value={y}>{y}년</option>)}
+            </select>
+            <select
+              className="cal-select"
+              value={viewDate.getMonth()}
+              onChange={(e) => setViewDate(new Date(viewDate.getFullYear(), Number(e.target.value), 1))}
+              aria-label="월 선택"
+            >
+              {Array.from({ length: 12 }, (_, m) => (
+                <option key={m} value={m}>{m + 1}월</option>
+              ))}
+            </select>
             <button className="btn ghost icon" onClick={goNextMonth} aria-label="다음 달">
               <Icon name="arrow-right" size={16} />
             </button>
