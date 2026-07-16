@@ -331,6 +331,7 @@ button.pill:hover { opacity: 0.85; }
   padding: 16px 20px; border-bottom: 1px solid var(--line);
 }
 .show-row:last-child { border-bottom: 0; }
+.show-row b { overflow-wrap: anywhere; }
 .show-row .date-inline { font-family: 'JetBrains Mono', monospace; font-size: 15px; color: var(--wine); font-weight: 600; text-align: left; }
 .show-row .lineup { display: flex; gap: -4px; }
 .show-row .lineup .av { margin-left: -8px; border: 2px solid var(--paper); }
@@ -357,7 +358,10 @@ button.pill:hover { opacity: 0.85; }
 .dir .card-m:hover { border-color: var(--wine); transform: translateY(-2px); }
 .dir .card-m .cover { aspect-ratio: 4 / 3; }
 .dir .card-m .meta { padding: 12px 14px; }
-.dir .card-m .name { font-family: 'Noto Serif KR', serif; font-weight: 700; font-size: 17px; display: flex; align-items: center; gap: 6px; }
+/* min-width:0 — flex 컨테이너 안의 텍스트도 flex item 취급돼서 기본값(min-width:auto)이면
+   내용 최소 너비 밑으로 안 줄어들어 좁은 카드(모바일 3열)에서 긴 활동명이 옆으로 넘침.
+   overflow-wrap:anywhere — 그래도 남는 긴 영문 토큰은 줄바꿈 지점이 없어 넘치므로 강제로 끊음 */
+.dir .card-m .name { font-family: 'Noto Serif KR', serif; font-weight: 700; font-size: 17px; display: flex; align-items: center; gap: 6px; min-width: 0; overflow-wrap: anywhere; }
 .dir .card-m .role { font-size: 12px; color: var(--mute); margin-top: 2px; }
 
 /* Status row */
@@ -752,7 +756,9 @@ button.pill:hover { opacity: 0.85; }
    세로로 자연스럽게 늘어남 (이름을 .collab-grid가 아닌 .partner-grid로 지은 이유:
    .collab-grid는 아래 '협연자' 섹션에서 이미 다른 레이아웃으로 쓰이고 있어 이름이 겹치면
    나중에 선언된 규칙이 이겨서 의도한 4열이 아니라 3열로 깨짐) */
-.partner-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+/* minmax(0, 1fr): 그냥 1fr만 쓰면 트랙이 내용물(아바타 등)의 최소 너비 밑으로 못 줄어들어
+   좁은 화면에서 카드 4개가 컨테이너 밖으로 넘치는 문제가 있어서 0을 최소값으로 명시함 */
+.partner-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
 .partner-card {
   display: flex; flex-direction: column; align-items: center; gap: 4px;
   padding: 8px 4px; text-align: center;
@@ -946,6 +952,10 @@ button.pill:hover { opacity: 0.85; }
 
 @media (max-width: 980px) {
   .two-col, .re-two-col, .dash-two-col { grid-template-columns: 1fr; }
+  /* .public-profile .two-col(클래스 2개)가 .two-col(클래스 1개)보다 명시도가 높아서
+     media query 밖에서 선언된 0.85fr/1.15fr 값이 이 규칙보다 항상 이겨버리는 문제가 있었음
+     (좁은 화면에서도 두 칸이 안 쌓이고 계속 옆으로 붙어있어 내용이 넘침) → 여기서 같은 명시도로 덮어씀 */
+  .public-profile .two-col { grid-template-columns: 1fr; }
   .admin-stat-grid, .dash-stat-row { grid-template-columns: repeat(2, 1fr); }
   .verify-layout { grid-template-columns: 1fr; }
   .resume.modern { grid-template-columns: 1fr; }
