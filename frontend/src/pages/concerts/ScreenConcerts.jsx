@@ -1,6 +1,7 @@
 // 공연 목록 페이지 — 공연 일정을 월별 달력으로 보여주는 화면
 import { useState, useEffect, useMemo } from 'react'; // useMemo: 달력 그리드/날짜별 그룹 계산을 매 렌더마다 다시 하지 않도록 캐싱
 import Icon from '../../components/Icon';     // 아이콘 컴포넌트
+import Spinner from '../../components/Spinner'; // 로딩 스피너
 import { api } from '../../api/client';       // 백엔드 API 호출 함수 모음
 
 // startTime에서 시:분 형식 문자열을 반환하는 함수
@@ -136,7 +137,7 @@ export default function ScreenConcerts({ navigate }) {
     return (
       <div className="main">
         <div className="pad">
-          <p className="muted">공연 정보를 불러오는 중...</p>
+          <Spinner label="공연 정보를 불러오는 중..." />
         </div>
       </div>
     );

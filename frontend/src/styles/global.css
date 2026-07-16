@@ -739,6 +739,17 @@ button.pill:hover { opacity: 0.85; }
 .empty-state { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 56px 0; }
 .empty-state.sm { padding: 28px 0; }
 
+/* Spinner — 텍스트뿐이던 로딩 상태 대신 쓰는 회전 스피너 */
+.spinner-wrap { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 0; }
+.spinner {
+  width: 28px; height: 28px;
+  border: 3px solid var(--line);
+  border-top-color: var(--wine);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
 /* 백엔드 미구현 기능 자리를 점선 박스로 표시하는 "준비 중" 플레이스홀더 */
 .coming-soon-box { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 32px 20px; border: 1.5px dashed var(--line); border-radius: 10px; background: var(--paper-2, #faf9f7); }
 .coming-soon-label { font-size: 13px; font-weight: 600; color: var(--mute); }

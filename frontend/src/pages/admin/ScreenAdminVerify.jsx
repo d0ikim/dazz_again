@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'; // useState: 상태 관리 / useEffect: 마운트 시 API 호출
 import Icon from '../../components/Icon';     // 아이콘 컴포넌트
 import Avatar from '../../components/Avatar'; // 이니셜 아바타 컴포넌트
+import Spinner from '../../components/Spinner'; // 로딩 스피너
 import { api } from '../../api/client';       // 백엔드 API 호출 함수 모음
 
 // LocalDateTime 문자열을 읽기 좋은 형식으로 변환하는 함수
@@ -62,7 +63,7 @@ export default function ScreenAdminVerify({ navigate, onToast }) {
   if (loading) {
     return (
       <div className="main dashboard-main">
-        <div className="pad"><p className="muted">신청 목록을 불러오는 중...</p></div>
+        <div className="pad"><Spinner label="신청 목록을 불러오는 중..." /></div>
       </div>
     );
   }

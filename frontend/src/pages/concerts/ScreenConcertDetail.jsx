@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'; // useState: 상태 관리 / useEffect: 마운트 시 API 호출
 import Avatar from '../../components/Avatar'; // 이니셜/프로필 아바타 컴포넌트
 import Icon from '../../components/Icon';     // 아이콘 컴포넌트
+import Spinner from '../../components/Spinner'; // 로딩 스피너
 import { api } from '../../api/client';       // 백엔드 API 호출 함수 모음
 
 // startTime(ISO 문자열)을 "2026년 5월 18일 (월)" 형식으로 변환하는 함수
@@ -62,7 +63,7 @@ export default function ScreenConcertDetail({ concertId, navigate, onToast }) {
 
   // 로딩 중
   if (loading) {
-    return <div className="main"><div className="pad"><p className="muted">공연 정보를 불러오는 중...</p></div></div>;
+    return <div className="main"><div className="pad"><Spinner label="공연 정보를 불러오는 중..." /></div></div>;
   }
 
   // 공연을 찾을 수 없음 (404 또는 잘못된 ID)

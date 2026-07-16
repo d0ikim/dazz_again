@@ -1,6 +1,7 @@
 // 뮤지션 디렉토리 페이지 — 서비스 메인 화면이자 뮤지션 목록을 보여주는 화면
 import { useState, useEffect, useRef } from 'react'; // useState: 상태 관리 / useEffect: 마운트 시 API 호출 / useRef: 스크롤 기준점·마운트 여부 기억
 import Icon from '../../components/Icon';     // 아이콘 컴포넌트
+import Spinner from '../../components/Spinner'; // 로딩 스피너
 import { api } from '../../api/client';       // 백엔드 API 호출 함수 모음
 
 // 악기별 필터 버튼 목록 — 백엔드 position 필드값과 대소문자 무시해서 비교함
@@ -66,7 +67,7 @@ export default function ScreenDirectory({ navigate, auth, onLoginClick }) {
     return (
       <div className="main">
         <div className="pad wide">
-          <p className="muted">뮤지션 목록을 불러오는 중...</p>
+          <Spinner label="뮤지션 목록을 불러오는 중..." />
         </div>
       </div>
     );

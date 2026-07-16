@@ -1,6 +1,7 @@
 // 공연장 목록 페이지 — 서울 재즈 공연장을 목록으로 보여주는 화면
 import { useState, useEffect, useMemo, useCallback } from 'react'; // useState: 상태 관리 / useEffect: 마운트 시 API 호출 / useMemo·useCallback: 불필요한 재계산 방지
 import Icon from '../../components/Icon';     // 아이콘 컴포넌트
+import Spinner from '../../components/Spinner'; // 로딩 스피너
 import { api } from '../../api/client';       // 백엔드 API 호출 함수 모음
 import VenueMap from './VenueMap';            // 카카오맵 위에 공연장 마커를 그리는 컴포넌트
 
@@ -104,7 +105,7 @@ export default function ScreenVenues({ navigate }) {
     return (
       <div className="main">
         <div className="pad">
-          <p className="muted">공연장 정보를 불러오는 중...</p>
+          <Spinner label="공연장 정보를 불러오는 중..." />
         </div>
       </div>
     );

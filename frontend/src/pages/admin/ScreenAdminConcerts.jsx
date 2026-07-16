@@ -2,6 +2,7 @@
 // 전체 공연 목록을 예정/종료 탭으로 나눠 보여주고 등록/취소 처리하는 화면
 import { useState, useEffect } from 'react'; // useState: 상태 관리 / useEffect: 마운트 시 API 호출
 import Icon from '../../components/Icon';     // 아이콘 컴포넌트
+import Spinner from '../../components/Spinner'; // 로딩 스피너
 import { api } from '../../api/client';       // 백엔드 API 호출 함수 모음
 
 // startTime에서 "YYYY-MM-DD HH:MM" 형식 문자열 반환
@@ -173,7 +174,7 @@ export default function ScreenAdminConcerts({ navigate, onToast }) {
   };
 
   if (loading) {
-    return <div className="main dashboard-main"><div className="pad"><p className="muted">불러오는 중...</p></div></div>;
+    return <div className="main dashboard-main"><div className="pad"><Spinner label="불러오는 중..." /></div></div>;
   }
 
   // tab + 검색어로 공연 필터링
