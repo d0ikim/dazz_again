@@ -310,12 +310,12 @@ button.pill:hover { opacity: 0.85; }
 .hero {
   background: var(--paper);
   border-radius: 14px;
-  padding: 56px 48px;
+  padding: 22px 44px;
   border: 1px solid var(--line);
   position: relative;
   overflow: hidden;
 }
-.hero-title { font-size: 44px; } /* 모바일에서는 아래 768px 미디어 쿼리가 줄임 */
+.hero-title { font-size: 36px; } /* 모바일에서는 아래 768px 미디어 쿼리가 줄임 */
 .hero .stamp {
   position: absolute; right: -40px; top: -40px;
   width: 200px; height: 200px; border-radius: 999px;
@@ -324,7 +324,9 @@ button.pill:hover { opacity: 0.85; }
 
 /* Show row */
 .show-row {
-  display: grid; grid-template-columns: 56px 1fr auto;
+  /* minmax(0, 1fr): 1fr만 쓰면 트랙이 공연명(줄바꿈 없는 긴 단어)의 최소 너비 밑으로
+     못 줄어들어 좁은 화면에서 줄 전체가 옆으로 넘치는 문제가 있어서 0을 최소값으로 명시함 */
+  display: grid; grid-template-columns: 56px minmax(0, 1fr) auto;
   gap: 18px; align-items: center;
   padding: 16px 20px; border-bottom: 1px solid var(--line);
 }
@@ -357,8 +359,6 @@ button.pill:hover { opacity: 0.85; }
 .dir .card-m .meta { padding: 12px 14px; }
 .dir .card-m .name { font-family: 'Noto Serif KR', serif; font-weight: 700; font-size: 17px; display: flex; align-items: center; gap: 6px; }
 .dir .card-m .role { font-size: 12px; color: var(--mute); margin-top: 2px; }
-.dir .card-m .nums { display: flex; gap: 10px; margin-top: 8px; font-size: 11px; color: var(--ink-2); }
-.dir .card-m .nums b { color: var(--wine); font-family: 'JetBrains Mono', monospace; }
 
 /* Status row */
 .statbar { display: flex; gap: 32px; }

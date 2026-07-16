@@ -19,6 +19,7 @@ export default function Topbar({ route, navigate, mode = 'visitor', me, auth = {
             <a className={route === 'venues' ? 'active' : ''} onClick={() => navigate('venues')}>공연장</a>
             <a className={route === 'concerts' ? 'active' : ''} onClick={() => navigate('concerts')}>공연</a>
             <a className={route === 'playdb' ? 'active' : ''} onClick={() => navigate('playdb')}>인맥지도</a>
+            <a className={route === 'guide' ? 'active' : ''} onClick={() => navigate('guide')}>가이드</a>
           </nav>
         ) : null}
       </div>
