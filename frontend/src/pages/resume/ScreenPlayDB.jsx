@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react'; // useState: 상태 / useEffect: AP
 import GraphView from '../visitor/GraphView'; // 인맥 관계도 캔버스 컴포넌트
 import Avatar from '../../components/Avatar'; // 이니셜 아바타
 import Icon from '../../components/Icon';     // 아이콘
+import Spinner from '../../components/Spinner'; // 로딩 스피너
 import { api } from '../../api/client';       // 백엔드 API 호출 함수 모음
 import { getWeightBadgeStyle } from '../../utils/weightColor'; // 협연 횟수에 따른 배지 색 계산
 
@@ -47,7 +48,7 @@ function MusicianMap({ uuid, navigate }) {
       .finally(() => setLoading(false));
   }, [uuid]);
 
-  if (loading) return <div className="main"><div className="pad"><p className="muted">인맥지도를 불러오는 중...</p></div></div>;
+  if (loading) return <div className="main"><div className="pad"><Spinner label="인맥지도를 불러오는 중..." /></div></div>;
   if (!musician) return <div className="main"><div className="pad"><p className="muted">뮤지션을 찾을 수 없습니다.</p></div></div>;
 
   // GraphView edges에서 협연 뮤지션 목록 추출 (중심 제외), 협연 횟수 많은 순 정렬
@@ -153,7 +154,7 @@ function MusicianPicker({ navigate }) {
         </p>
 
         <div className="field" style={{ marginBottom: 16 }}>
-          <div className="prefix">
+          <div className="prefix plain">
             <span><Icon name="search" size={14} /></span>
             <input
               type="text"
@@ -165,7 +166,7 @@ function MusicianPicker({ navigate }) {
         </div>
 
         {loading ? (
-          <p className="muted">불러오는 중...</p>
+          <Spinner label="불러오는 중..." />
         ) : (
           <div className="card flush">
             {list.map((m) => (

@@ -134,10 +134,45 @@ export default function GraphView({ edges = [], musicians = {}, center, navigate
   }, [edges, center, musicians]); // musicians 맵이 바뀌면 그래프 재렌더링
 
   return (
-    <div
-      ref={ref}
-      className="graph-view"
-      style={{ width: '100%', position: 'relative', background: 'var(--paper)', borderRadius: 8, overflow: 'hidden' }}
-    />
+    <>
+      <div
+        ref={ref}
+        className="graph-view"
+        style={{ width: '100%', position: 'relative', background: 'var(--paper)', borderRadius: 8, overflow: 'hidden' }}
+      />
+      <GraphLegend />
+    </>
+  );
+}
+
+// 선 굵기/진하기가 뭘 뜻하는지 안내하는 범례.
+// 실제 선을 그릴 때(위 stroke/stroke-width 계산)와 같은 공식을 그대로 써서
+// 범례 색상·굵기가 그래프와 항상 일치하도록 함
+function GraphLegend() {
+  const samples = [1, 3, 5]; // 협연 1회 / 중간(3회) / 최대치(5회 이상)
+
+  return (
+    <div className="graph-legend">
+      <span className="gl-item">선 굵기·진하기 = 협연 횟수</span>
+      {samples.map((w) => {
+        const ratio = getWeightRatio(w);
+        const lightness = 0.86 - ratio * 0.5;
+        const chroma = 0.03 + ratio * 0.14;
+        const strokeWidth = (1 + ratio * 7).toFixed(1);
+        return (
+          <span key={w} className="gl-item">
+            <svg width="26" height="10" style={{ flexShrink: 0 }}>
+              <line
+                x1="0" y1="5" x2="26" y2="5"
+                stroke={`oklch(${lightness.toFixed(2)} ${chroma.toFixed(2)} 28)`}
+                strokeWidth={strokeWidth}
+                strokeLinecap="round"
+              />
+            </svg>
+            {w >= 5 ? '5회 이상' : `${w}회`}
+          </span>
+        );
+      })}
+    </div>
   );
 }

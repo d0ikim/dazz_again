@@ -2,6 +2,7 @@
 // 공연장 목록을 테이블로 표시하고 인라인 수정·추가 기능을 제공하는 화면
 import { useState, useEffect } from 'react'; // useState: 상태 관리 / useEffect: 마운트 시 API 호출
 import Icon from '../../components/Icon';     // 아이콘 컴포넌트
+import Spinner from '../../components/Spinner'; // 로딩 스피너
 import { api } from '../../api/client';       // 백엔드 API 호출 함수 모음
 
 // 폼 초기값 — 추가 모드 진입 시 빈 입력 필드를 만들기 위해 사용
@@ -82,7 +83,7 @@ export default function ScreenAdminVenues({ navigate, onToast }) {
   if (loading) {
     return (
       <div className="main dashboard-main">
-        <div className="pad"><p className="muted">공연장 목록을 불러오는 중...</p></div>
+        <div className="pad"><Spinner label="공연장 목록을 불러오는 중..." /></div>
       </div>
     );
   }

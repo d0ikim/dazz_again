@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'; // useEffect: 뮤지션 목록 로드
 import Icon from '../../components/Icon';    // 아이콘
 import Avatar from '../../components/Avatar'; // 아바타
+import Spinner from '../../components/Spinner'; // 로딩 스피너
 import { api } from '../../api/client';      // 백엔드 API 호출 함수 모음
 
 // onSubmitRequest: App.jsx의 handleVerifyRequest — 신청 성공 시 auth.pending=true + 'pending' 화면으로 이동
@@ -51,7 +52,7 @@ export default function ScreenClaimExisting({ navigate, onSubmitRequest }) {
         <p className="muted" style={{ marginBottom: 20 }}>등록된 뮤지션 중 본인을 선택하세요. 동명이인 방지를 위해 악기를 함께 확인해주세요.</p>
 
         <div className="field" style={{ marginBottom: 16 }}>
-          <div className="prefix">
+          <div className="prefix plain">
             <span><Icon name="search" size={14} /></span>
             <input type="text" placeholder="본인 활동명 검색" value={query} onChange={(e) => setQuery(e.target.value)} />
           </div>
@@ -59,7 +60,7 @@ export default function ScreenClaimExisting({ navigate, onSubmitRequest }) {
 
         <div className="card flush" style={{ marginBottom: 22 }}>
           {loading ? (
-            <div className="empty-state sm"><p className="muted">불러오는 중...</p></div>
+            <div className="empty-state sm"><Spinner label="불러오는 중..." /></div>
           ) : list.map((m) => (
             // picked: 선택된 뮤지션의 숫자형 DB id
             <div key={m.id} className={`claim-row ${picked === m.id ? 'on' : ''}`} onClick={() => setPicked(m.id)}>

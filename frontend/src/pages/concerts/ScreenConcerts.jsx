@@ -1,6 +1,7 @@
 // 공연 목록 페이지 — 공연 일정을 월별 달력으로 보여주는 화면
 import { useState, useEffect, useMemo } from 'react'; // useMemo: 달력 그리드/날짜별 그룹 계산을 매 렌더마다 다시 하지 않도록 캐싱
 import Icon from '../../components/Icon';     // 아이콘 컴포넌트
+import Spinner from '../../components/Spinner'; // 로딩 스피너
 import { api } from '../../api/client';       // 백엔드 API 호출 함수 모음
 
 // startTime에서 시:분 형식 문자열을 반환하는 함수
@@ -125,7 +126,15 @@ export default function ScreenConcerts({ navigate }) {
     return [...map.values()].sort((a, b) => a.id - b.id);
   }, [performances]);
 
-  const monthLabel = `${viewDate.getFullYear()}년 ${viewDate.getMonth() + 1}월`;
+  // 연도 드롭다운에 보여줄 연도 목록 — 등록된 공연이 실제로 있는 연도들 + 올해 + 현재 보고 있는 연도
+  // (화살표로 데이터 범위 밖까지 이동해도 드롭다운에 현재 연도가 항상 존재하도록 viewDate 연도 포함)
+  const yearOptions = useMemo(() => {
+    const years = new Set([today.getFullYear(), viewDate.getFullYear()]);
+    performances.forEach((p) => {
+      if (p.startTime) years.add(new Date(p.startTime).getFullYear());
+    });
+    return [...years].sort((a, b) => a - b);
+  }, [performances, viewDate, today]);
 
   // 이전/다음 달로 이동 — month에 -1/+1을 넣으면 Date가 연도 넘어가는 것까지 알아서 계산해줌
   const goPrevMonth = () => setViewDate((d) => new Date(d.getFullYear(), d.getMonth() - 1, 1));
@@ -136,7 +145,7 @@ export default function ScreenConcerts({ navigate }) {
     return (
       <div className="main">
         <div className="pad">
-          <p className="muted">공연 정보를 불러오는 중...</p>
+          <Spinner label="공연 정보를 불러오는 중..." />
         </div>
       </div>
     );
@@ -149,8 +158,9 @@ export default function ScreenConcerts({ navigate }) {
         <p className="muted" style={{ marginBottom: 18 }}>DAZZ에 등록된 뮤지션들의 공연 일정을 달력으로 확인하세요.</p>
 
         {/* 공연명 검색 */}
-        <div className="field" style={{ marginBottom: 16, width: 'auto', maxWidth: 320 }}>
-          <div className="prefix">
+        {/* 검색창 너비는 CSS(.search-field)로 — 데스크톱 240px, 모바일에서는 화면 폭에 맞춰 늘어남 */}
+        <div className="field search-field" style={{ marginBottom: 16 }}>
+          <div className="prefix plain">
             <span><Icon name="search" size={14} /></span>
             <input
               type="text"
@@ -167,7 +177,25 @@ export default function ScreenConcerts({ navigate }) {
             <button className="btn ghost icon" onClick={goPrevMonth} aria-label="이전 달">
               <Icon name="arrow-left" size={16} />
             </button>
-            <h2 className="h3 serif" style={{ margin: 0, minWidth: 120, textAlign: 'center' }}>{monthLabel}</h2>
+            {/* 연/월 드롭다운 — 제목 글씨를 클릭하면 원하는 연도·월로 바로 이동 (화살표 반복 클릭 불필요) */}
+            <select
+              className="cal-select"
+              value={viewDate.getFullYear()}
+              onChange={(e) => setViewDate(new Date(Number(e.target.value), viewDate.getMonth(), 1))}
+              aria-label="연도 선택"
+            >
+              {yearOptions.map((y) => <option key={y} value={y}>{y}년</option>)}
+            </select>
+            <select
+              className="cal-select"
+              value={viewDate.getMonth()}
+              onChange={(e) => setViewDate(new Date(viewDate.getFullYear(), Number(e.target.value), 1))}
+              aria-label="월 선택"
+            >
+              {Array.from({ length: 12 }, (_, m) => (
+                <option key={m} value={m}>{m + 1}월</option>
+              ))}
+            </select>
             <button className="btn ghost icon" onClick={goNextMonth} aria-label="다음 달">
               <Icon name="arrow-right" size={16} />
             </button>

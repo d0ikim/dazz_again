@@ -1,6 +1,7 @@
 // 뮤지션 디렉토리 페이지 — 서비스 메인 화면이자 뮤지션 목록을 보여주는 화면
 import { useState, useEffect, useRef } from 'react'; // useState: 상태 관리 / useEffect: 마운트 시 API 호출 / useRef: 스크롤 기준점·마운트 여부 기억
 import Icon from '../../components/Icon';     // 아이콘 컴포넌트
+import Spinner from '../../components/Spinner'; // 로딩 스피너
 import { api } from '../../api/client';       // 백엔드 API 호출 함수 모음
 
 // 악기별 필터 버튼 목록 — 백엔드 position 필드값과 대소문자 무시해서 비교함
@@ -66,7 +67,7 @@ export default function ScreenDirectory({ navigate, auth, onLoginClick }) {
     return (
       <div className="main">
         <div className="pad wide">
-          <p className="muted">뮤지션 목록을 불러오는 중...</p>
+          <Spinner label="뮤지션 목록을 불러오는 중..." />
         </div>
       </div>
     );
@@ -77,19 +78,19 @@ export default function ScreenDirectory({ navigate, auth, onLoginClick }) {
       <div className="pad wide">
 
         {/* 히어로 섹션 — 서비스 소개 + 주요 진입 버튼 */}
-        <div className="hero">
+        <div className="hero" style={{ marginBottom: 20 }}>
           <div className="stamp" />
-          <div className="eyebrow" style={{ marginBottom: 10 }}>K-JAZZ INSIGHT NAVIGATOR · MVP</div>
+          <div className="eyebrow" style={{ marginBottom: 8 }}>K-JAZZ INSIGHT NAVIGATOR</div>
           {/* 제목 크기는 인라인이 아니라 CSS(.hero-title)로 지정 — 모바일 미디어 쿼리로 줄일 수 있게 */}
-          <h1 className="h1 serif hero-title" style={{ marginBottom: 12, maxWidth: 720 }}>
+          <h1 className="h1 serif hero-title" style={{ marginBottom: 8, maxWidth: 720 }}>
             한국재즈 뮤지션을<br />뮤지션이 직접 정리합니다.
           </h1>
-          <p className="lead" style={{ maxWidth: 560, marginBottom: 20 }}>
+          <p className="lead" style={{ maxWidth: 560, marginBottom: 16 }}>
             DAZZ는 재즈 입문자가 길을 잃지 않도록 — 그리고 현역 뮤지션이 정돈된 디지털 이력서를 가질 수 있도록 — 뮤지션이 직접 관리하는 포트폴리오 플랫폼입니다.
           </p>
 
           {/* 로그인 상태에 따라 다른 버튼 표시 */}
-          <div className="row" style={{ gap: 10 }}>
+          <div className="row" style={{ gap: 10, flexWrap: 'wrap' }}>
             {auth?.role === 'guest' ? (
               <button className="btn primary lg" onClick={() => onLoginClick && onLoginClick('become')}>
                 내 프로필 만들기 <Icon name="arrow-right" size={16} />
@@ -109,13 +110,18 @@ export default function ScreenDirectory({ navigate, auth, onLoginClick }) {
                 샘플 프로필 보기
               </button>
             )}
+            {/* 처음 온 방문자를 위한 이용 가이드 링크 — ghost(테두리 없음)로 하면 다른 두 버튼과
+                나란히 있을 때 버튼처럼 안 보이고 텍스트만 붕 떠 보여서 secondary로 통일 */}
+            <button className="btn secondary lg" onClick={() => navigate('guide')}>
+              이용 가이드 보기
+            </button>
           </div>
 
           {/* 통계 바 — 뮤지션 수/공연 수는 실제 데이터, 협업 엣지는 집계 API가 없어 준비 중 */}
-          <div className="statbar">
-            <div className="stat"><b>{musicians.length}</b><span>뮤지션</span></div>
-            <div className="stat"><b>{performanceCount ?? '—'}</b><span>등록된 공연</span></div>
-            <div className="stat"><b>—</b><span>협업 엣지</span></div>     {/* 인맥 집계 API 준비 중 */}
+          <div className="statbar" style={{ marginTop: 14 }}>
+            <div className="statbar-item"><b>{musicians.length}</b><span>뮤지션</span></div>
+            <div className="statbar-item"><b>{performanceCount ?? '—'}</b><span>등록된 공연</span></div>
+            <div className="statbar-item"><b>—</b><span>협업 엣지</span></div>     {/* 인맥 집계 API 준비 중 */}
           </div>
         </div>
 
@@ -125,8 +131,9 @@ export default function ScreenDirectory({ navigate, auth, onLoginClick }) {
             <div className="eyebrow" style={{ marginBottom: 4 }}>뮤지션 디렉토리</div>
             <h2 className="h2 serif" style={{ margin: 0 }}>활동중인 뮤지션 {list.length}명</h2>
           </div>
-          <div className="field" style={{ width: 240, marginBottom: 0 }}>
-            <div className="prefix">
+          {/* 검색창 너비는 인라인 240px 고정 대신 CSS(.search-field)로 — 모바일에서는 화면 폭에 맞춰 늘어나게 */}
+          <div className="field search-field">
+            <div className="prefix plain">
               <span><Icon name="search" size={14} /></span>
               <input
                 type="text"
@@ -161,7 +168,8 @@ export default function ScreenDirectory({ navigate, auth, onLoginClick }) {
                 {m.profileImageUrl ? (
                   <img src={m.profileImageUrl} alt={`${m.stageName} 프로필`} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                 ) : (
-                  <div className="imgph">{m.stageName} 사진</div>
+                  // 사진이 없는 뮤지션은 "OO 사진" 텍스트 대신 기본 프로필 아이콘(사람 실루엣) 표시
+                  <div className="imgph"><Icon name="user" size={44} color="var(--mute-2)" stroke={1.3} /></div>
                 )}
               </div>
               <div className="meta">
@@ -169,10 +177,8 @@ export default function ScreenDirectory({ navigate, auth, onLoginClick }) {
                 <div className="name serif">{m.stageName}</div>
                 {/* position: 백엔드 필드명 (mock의 role에 해당, 예: PIANO, VOCAL) */}
                 <div className="role">{m.position}</div>
-                {/* 공연 수·협업 수 통계는 백엔드 미구현 — 준비 중 표시 */}
-                <div className="nums">
-                  <span className="muted" style={{ fontSize: 11 }}>공연 이력 준비 중</span>
-                </div>
+                {/* 공연 수·협업 수 통계는 뮤지션별로 한 번에 세는 API가 없어 여기서는 표시하지 않음
+                    (실제 공연 이력이 있는 뮤지션도 있어 "준비 중" 문구가 부정확했음) — 프로필 페이지에서 확인 가능 */}
               </div>
             </div>
           ))}

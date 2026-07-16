@@ -1,6 +1,7 @@
 // MUSICIAN 대시보드 — 본인 공연 이력 전체 목록 화면
 import { useState, useEffect } from 'react'; // useState: 상태 / useEffect: API 호출
 import Icon from '../../components/Icon';    // 아이콘
+import Spinner from '../../components/Spinner'; // 로딩 스피너
 import ShowRow from '../visitor/ShowRow';    // 공연 한 줄 컴포넌트 (Performance 형식)
 import AddShowModal from './AddShowModal';   // 공연 추가 모달
 import { api } from '../../api/client';     // 백엔드 API 호출 함수 모음
@@ -35,7 +36,7 @@ export default function ScreenShowsList({ navigate, onToast, me }) {
   };
 
   if (loading) {
-    return <div className="main dashboard-main"><div className="pad"><p className="muted">공연 목록을 불러오는 중...</p></div></div>;
+    return <div className="main dashboard-main"><div className="pad"><Spinner label="공연 목록을 불러오는 중..." /></div></div>;
   }
 
   // 뮤지션 프로필이 아직 없는 경우 안내

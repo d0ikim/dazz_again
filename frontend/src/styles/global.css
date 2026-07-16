@@ -209,6 +209,8 @@ button.pill:hover { opacity: 0.85; }
 
 /* ─── Form fields ───────────────────────────────────── */
 .field { display: flex; flex-direction: column; gap: 6px; }
+/* 목록 페이지 공용 검색창 — 데스크톱은 240px 고정, 모바일(768px 이하)은 화면 폭에 맞춰 늘어남 */
+.search-field { width: 240px; margin-bottom: 0; }
 .field label { font-size: 12px; font-weight: 600; color: var(--ink-2); }
 .field .help { font-size: 12px; color: var(--mute); }
 .field .err { font-size: 12px; color: #c0392b; } /* 형식 오류 등 검증 실패 안내문 */
@@ -226,6 +228,9 @@ button.pill:hover { opacity: 0.85; }
 .field .prefix { display: flex; align-items: stretch; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); overflow: hidden; }
 .field .prefix span { padding: 9px 12px; background: var(--paper-2); border-right: 1px solid var(--line); color: var(--mute); font-size: 13px; font-family: 'JetBrains Mono', monospace; align-self: center; }
 .field .prefix input { border: 0 !important; box-shadow: none !important; padding-left: 10px; }
+/* plain 변형 — 검색창의 돋보기처럼 "누르는 버튼"이 아닌 순수 장식 아이콘일 때 사용.
+   기본 .prefix의 회색 배경+세로 구분선은 @아이디 입력처럼 접두사가 의미 있는 곳에만 남긴다 */
+.field .prefix.plain span { background: transparent; border-right: 0; padding-right: 0; }
 .field.row { flex-direction: row; gap: 12px; align-items: center; }
 
 /* ─── Tabs ──────────────────────────────────────────── */
@@ -262,13 +267,12 @@ button.pill:hover { opacity: 0.85; }
 
 .kbd { font-family: 'JetBrains Mono', monospace; font-size: 11px; padding: 2px 6px; border: 1px solid var(--line); border-radius: 4px; background: var(--paper); color: var(--ink-2); }
 
+/* 사진 없는 뮤지션 카드의 기본 프로필 자리 — 카톡/인스타 기본 프사처럼
+   연한 단색 배경 가운데에 사람 실루엣 아이콘을 표시 (예전엔 "OO 사진" 텍스트였음) */
 .imgph {
-  background: repeating-linear-gradient(135deg, var(--paper-2) 0 8px, var(--line) 8px 9px);
-  border: 1px solid var(--line);
-  border-radius: 8px;
+  width: 100%; height: 100%;
+  background: var(--paper-2);
   display: flex; align-items: center; justify-content: center;
-  color: var(--mute); font-family: 'JetBrains Mono', monospace; font-size: 10px;
-  text-transform: uppercase; letter-spacing: 0.08em;
 }
 
 /* ─── Toast ───────────────────────────────────────── */
@@ -310,12 +314,12 @@ button.pill:hover { opacity: 0.85; }
 .hero {
   background: var(--paper);
   border-radius: 14px;
-  padding: 56px 48px;
+  padding: 22px 44px;
   border: 1px solid var(--line);
   position: relative;
   overflow: hidden;
 }
-.hero-title { font-size: 44px; } /* 모바일에서는 아래 768px 미디어 쿼리가 줄임 */
+.hero-title { font-size: 36px; } /* 모바일에서는 아래 768px 미디어 쿼리가 줄임 */
 .hero .stamp {
   position: absolute; right: -40px; top: -40px;
   width: 200px; height: 200px; border-radius: 999px;
@@ -324,11 +328,14 @@ button.pill:hover { opacity: 0.85; }
 
 /* Show row */
 .show-row {
-  display: grid; grid-template-columns: 56px 1fr auto;
+  /* minmax(0, 1fr): 1fr만 쓰면 트랙이 공연명(줄바꿈 없는 긴 단어)의 최소 너비 밑으로
+     못 줄어들어 좁은 화면에서 줄 전체가 옆으로 넘치는 문제가 있어서 0을 최소값으로 명시함 */
+  display: grid; grid-template-columns: 56px minmax(0, 1fr) auto;
   gap: 18px; align-items: center;
   padding: 16px 20px; border-bottom: 1px solid var(--line);
 }
 .show-row:last-child { border-bottom: 0; }
+.show-row b { overflow-wrap: anywhere; }
 .show-row .date-inline { font-family: 'JetBrains Mono', monospace; font-size: 15px; color: var(--wine); font-weight: 600; text-align: left; }
 .show-row .lineup { display: flex; gap: -4px; }
 .show-row .lineup .av { margin-left: -8px; border: 2px solid var(--paper); }
@@ -355,16 +362,22 @@ button.pill:hover { opacity: 0.85; }
 .dir .card-m:hover { border-color: var(--wine); transform: translateY(-2px); }
 .dir .card-m .cover { aspect-ratio: 4 / 3; }
 .dir .card-m .meta { padding: 12px 14px; }
-.dir .card-m .name { font-family: 'Noto Serif KR', serif; font-weight: 700; font-size: 17px; display: flex; align-items: center; gap: 6px; }
+/* min-width:0 — flex 컨테이너 안의 텍스트도 flex item 취급돼서 기본값(min-width:auto)이면
+   내용 최소 너비 밑으로 안 줄어들어 좁은 카드(모바일 3열)에서 긴 활동명이 옆으로 넘침.
+   overflow-wrap:anywhere — 그래도 남는 긴 영문 토큰은 줄바꿈 지점이 없어 넘치므로 강제로 끊음 */
+.dir .card-m .name { font-family: 'Noto Serif KR', serif; font-weight: 700; font-size: 17px; display: flex; align-items: center; gap: 6px; min-width: 0; overflow-wrap: anywhere; }
 .dir .card-m .role { font-size: 12px; color: var(--mute); margin-top: 2px; }
-.dir .card-m .nums { display: flex; gap: 10px; margin-top: 8px; font-size: 11px; color: var(--ink-2); }
-.dir .card-m .nums b { color: var(--wine); font-family: 'JetBrains Mono', monospace; }
 
 /* Status row */
-.statbar { display: flex; gap: 32px; }
-.statbar .stat { display: flex; flex-direction: column; gap: 2px; }
-.statbar .stat b { font-family: 'Noto Serif KR', serif; font-size: 26px; color: var(--ink); font-weight: 700; }
-.statbar .stat span { font-size: 11px; color: var(--mute); text-transform: uppercase; letter-spacing: 0.08em; }
+/* 아이템 클래스명을 stat이 아닌 statbar-item으로 지음 — 이력서/공개 프로필의 박스형 통계가 쓰는
+   전역 .stat 규칙(border-right, padding, flex:1, align-items:center)이 이름이 같으면 명시도 때문에
+   같이 묻어 들어와 원치 않는 세로 구분선·중앙정렬 박스 모양이 생겨서 이름을 아예 분리함 */
+/* 3등분 그리드 — 항목 수가 3개로 고정이라 flex 대신 grid로 균등한 칸을 만들고,
+   각 칸 안에서 내용을 가로·세로 모두 가운데 정렬함 */
+.statbar { display: grid; grid-template-columns: repeat(3, 1fr); align-items: center; gap: 12px; }
+.statbar-item { display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center; }
+.statbar-item b { font-family: 'Noto Serif KR', serif; font-size: 20px; line-height: 1; color: var(--ink); font-weight: 700; }
+.statbar-item span { font-size: 11px; color: var(--mute); text-transform: uppercase; letter-spacing: 0.08em; }
 
 /* Edit hint */
 .edit-hint {
@@ -486,7 +499,7 @@ button.pill:hover { opacity: 0.85; }
 .up-row .ud span { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--wine); }
 
 .venue-card .varea, .venue-card .vtonight, .map-hd b, .map-hd span,
-.map-legend .lg-item, .sec-label, .up-row .ud span, .statbar .stat span { white-space: nowrap; }
+.map-legend .lg-item, .sec-label, .up-row .ud span, .statbar-item span { white-space: nowrap; }
 
 /* ─── Generic overlapping avatar lineup ───────────────── */
 .lineup { display: flex; }
@@ -502,6 +515,14 @@ button.pill:hover { opacity: 0.85; }
 /* 공연 일정 — 월별 달력 뷰 */
 /* 공연장 범례 — 달력 칩과 똑같은 배경/글자색 조합(작은 칩 모양)으로 표시해서
    "이 색 = 이 공연장"이 바로 매칭되도록 함. <button>이라 브라우저 기본 테두리/배경을 초기화 */
+/* 달력 연/월 드롭다운 — 제목(세리프) 글씨처럼 보이지만 클릭하면 네이티브 드롭다운이 열림.
+   브라우저 기본 화살표(▾)는 "클릭할 수 있다"는 표시라서 일부러 남겨둠 */
+.cal-select {
+  font-family: 'Noto Serif KR', serif; font-size: 18px; font-weight: 700; color: var(--ink);
+  border: 0; background: transparent; cursor: pointer; padding: 2px 2px;
+}
+.cal-select:hover { color: var(--wine); }
+
 .cal-legend { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
 .cal-legend-item {
   border: 2px solid transparent; padding: 4px 10px; border-radius: 6px;
@@ -730,6 +751,17 @@ button.pill:hover { opacity: 0.85; }
 .empty-state { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 56px 0; }
 .empty-state.sm { padding: 28px 0; }
 
+/* Spinner — 텍스트뿐이던 로딩 상태 대신 쓰는 회전 스피너 */
+.spinner-wrap { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 0; }
+.spinner {
+  width: 28px; height: 28px;
+  border: 3px solid var(--line);
+  border-top-color: var(--wine);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
 /* 백엔드 미구현 기능 자리를 점선 박스로 표시하는 "준비 중" 플레이스홀더 */
 .coming-soon-box { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 32px 20px; border: 1.5px dashed var(--line); border-radius: 10px; background: var(--paper-2, #faf9f7); }
 .coming-soon-label { font-size: 13px; font-weight: 600; color: var(--mute); }
@@ -752,7 +784,9 @@ button.pill:hover { opacity: 0.85; }
    세로로 자연스럽게 늘어남 (이름을 .collab-grid가 아닌 .partner-grid로 지은 이유:
    .collab-grid는 아래 '협연자' 섹션에서 이미 다른 레이아웃으로 쓰이고 있어 이름이 겹치면
    나중에 선언된 규칙이 이겨서 의도한 4열이 아니라 3열로 깨짐) */
-.partner-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+/* minmax(0, 1fr): 그냥 1fr만 쓰면 트랙이 내용물(아바타 등)의 최소 너비 밑으로 못 줄어들어
+   좁은 화면에서 카드 4개가 컨테이너 밖으로 넘치는 문제가 있어서 0을 최소값으로 명시함 */
+.partner-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
 .partner-card {
   display: flex; flex-direction: column; align-items: center; gap: 4px;
   padding: 8px 4px; text-align: center;
@@ -933,6 +967,8 @@ button.pill:hover { opacity: 0.85; }
 
 /* ─── PlayDB graph view ───────────────────────────────────── */
 .graph-view { min-height: 320px; }
+.graph-legend { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 10px 16px; border-top: 1px solid var(--line); font-size: 11px; color: var(--mute); }
+.graph-legend .gl-item { display: flex; align-items: center; gap: 6px; }
 
 /* ─── btn.wine ────────────────────────────────────────────── */
 .btn.wine { background: var(--wine); color: #fff; border-color: var(--wine); }
@@ -944,6 +980,10 @@ button.pill:hover { opacity: 0.85; }
 
 @media (max-width: 980px) {
   .two-col, .re-two-col, .dash-two-col { grid-template-columns: 1fr; }
+  /* .public-profile .two-col(클래스 2개)가 .two-col(클래스 1개)보다 명시도가 높아서
+     media query 밖에서 선언된 0.85fr/1.15fr 값이 이 규칙보다 항상 이겨버리는 문제가 있었음
+     (좁은 화면에서도 두 칸이 안 쌓이고 계속 옆으로 붙어있어 내용이 넘침) → 여기서 같은 명시도로 덮어씀 */
+  .public-profile .two-col { grid-template-columns: 1fr; }
   .admin-stat-grid, .dash-stat-row { grid-template-columns: repeat(2, 1fr); }
   .verify-layout { grid-template-columns: 1fr; }
   .resume.modern { grid-template-columns: 1fr; }
@@ -998,9 +1038,9 @@ button.pill:hover { opacity: 0.85; }
   /* 긴 영문 단어(밴드명 등)가 포함된 제목이 화면 밖으로 삐져나가지 않게 강제 줄바꿈 */
   .h1, .h2, .h3 { overflow-wrap: anywhere; }
   /* 히어로 제목·여백 축소 — 히어로가 화면을 덜 차지해 목록까지 스크롤이 짧아짐 */
-  .hero { padding: 32px 24px; }
-  .hero-title { font-size: 30px; }
-  .lead { font-size: 16px; }
+  .hero { padding: 24px 20px; }
+  .hero-title { font-size: 26px; }
+  .lead { font-size: 15px; }
   /* 데스크톱 기준(14px)은 폰에서 너무 작음 — 모바일 기본 글자를 16px로 키움 */
   body { font-size: 16px; }
 
@@ -1028,6 +1068,8 @@ button.pill:hover { opacity: 0.85; }
   .field label { font-size: 14px; }
   .field .help { font-size: 13px; }
   .field .prefix span { font-size: 14px; }
+  /* 목록 페이지 공용 검색창 — 데스크톱 고정폭(240px) 대신 화면 폭에 꽉 차게 */
+  .search-field { width: 100%; }
 
   /* ── 드로어 메뉴 링크: 손가락으로 누르기 좋게 ── */
   .sidebar a { font-size: 16px; padding: 13px 16px; }

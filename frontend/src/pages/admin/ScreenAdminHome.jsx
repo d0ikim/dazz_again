@@ -1,6 +1,7 @@
 // 관리자 대시보드 메인 화면 — 플랫폼 현황 통계와 최근 인증 요청을 한눈에 표시
 import { useState, useEffect } from 'react'; // useState: 상태 / useEffect: 마운트 시 API 호출
 import Icon from '../../components/Icon';    // 아이콘
+import Spinner from '../../components/Spinner'; // 로딩 스피너
 import { api } from '../../api/client';     // 백엔드 API 호출 함수 모음
 
 export default function ScreenAdminHome({ navigate }) {
@@ -86,7 +87,7 @@ export default function ScreenAdminHome({ navigate }) {
               </div>
             )) : (
               <div className="empty-state sm">
-                <p className="muted">{loading ? '불러오는 중...' : '대기 중인 인증 요청이 없습니다'}</p>
+                {loading ? <Spinner /> : <p className="muted">대기 중인 인증 요청이 없습니다</p>}
               </div>
             )}
           </div>

@@ -14,6 +14,7 @@ export default function MobileNav({ open, route, navigate, auth = { role: 'guest
     ['venues', 'building', '공연장'],
     ['concerts', 'ticket', '공연'],
     ['playdb', 'graph', '인맥지도'],
+    ['guide', 'spark', '가이드'],
   ];
 
   return (

@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'; // useState: 상태 관리 / useEffect: 마운트 시 API 호출
 import Avatar from '../../components/Avatar'; // 이니셜 아바타 컴포넌트
 import Icon from '../../components/Icon';     // 아이콘 컴포넌트
+import Spinner from '../../components/Spinner'; // 로딩 스피너
 import ShowRow from './ShowRow';              // 공연 한 줄 컴포넌트
 import { api } from '../../api/client';      // 백엔드 API 호출 함수 모음
 import { getWeightBadgeStyle } from '../../utils/weightColor'; // 협연 횟수에 따른 배지 색 계산
@@ -73,7 +74,7 @@ export default function ScreenPublicProfile({ uuid, navigate, auth }) {
   }, [uuid]);
 
   if (loading) {
-    return <div className="main"><div className="pad"><p className="muted">프로필을 불러오는 중...</p></div></div>;
+    return <div className="main"><div className="pad"><Spinner label="프로필을 불러오는 중..." /></div></div>;
   }
 
   if (!musician) {

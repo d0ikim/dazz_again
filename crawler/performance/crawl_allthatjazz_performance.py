@@ -190,7 +190,7 @@ def collect_performances():
             'genre': None,                                  # 올댓재즈는 장르 정보 없음
             'setInfo': (entry.get('timeplan') or '').strip() or None,   # 예: '20:30 - 23:00'
             'setList': None,                                # 셋리스트 정보 없음
-            'sourceUrl': "https://allthatjazz.kr/schedule", # 개별 공연 페이지가 없어 스케줄 페이지로
+            'sourceUrl': None,                               # 개별 공연 페이지가 없어 원본 링크 없음 (스케줄 페이지 링크는 모든 공연에 동일하게 걸려 오해를 줘서 제거)
             'lineup': lineup,
         })
 

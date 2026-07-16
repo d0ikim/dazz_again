@@ -18,6 +18,7 @@ import ScreenOnboarding from './pages/onboarding/ScreenOnboarding';
 
 import ScreenDirectory from './pages/visitor/ScreenDirectory';
 import ScreenPublicProfile from './pages/visitor/ScreenPublicProfile';
+import ScreenGuide from './pages/visitor/ScreenGuide';
 
 import ScreenVenues from './pages/venues/ScreenVenues';
 
@@ -194,6 +195,7 @@ export default function App() {
 
     switch (route) {
       case 'directory': return <ScreenDirectory navigate={navigate} auth={auth} onLoginClick={openLogin} />;
+      case 'guide': return <ScreenGuide navigate={navigate} />;
       // uuid 파라미터: 뮤지션의 숫자형 DB id (ScreenDirectory 등에서 navigate 시 전달)
       case 'profile-public': return <ScreenPublicProfile uuid={routeParams.uuid} navigate={navigate} auth={auth} />;
       case 'venues': return <ScreenVenues navigate={navigate} />;
