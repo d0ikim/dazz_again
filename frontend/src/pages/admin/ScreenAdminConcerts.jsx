@@ -275,7 +275,7 @@ export default function ScreenAdminConcerts({ navigate, onToast }) {
 
         {/* 공연명 검색 */}
         <div className="field" style={{ marginBottom: 16, width: 'auto' }}>
-          <div className="prefix">
+          <div className="prefix plain">
             <span><Icon name="search" size={14} /></span>
             <input
               type="text"

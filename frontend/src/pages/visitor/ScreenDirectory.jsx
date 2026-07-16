@@ -131,8 +131,9 @@ export default function ScreenDirectory({ navigate, auth, onLoginClick }) {
             <div className="eyebrow" style={{ marginBottom: 4 }}>뮤지션 디렉토리</div>
             <h2 className="h2 serif" style={{ margin: 0 }}>활동중인 뮤지션 {list.length}명</h2>
           </div>
-          <div className="field" style={{ width: 240, marginBottom: 0 }}>
-            <div className="prefix">
+          {/* 검색창 너비는 인라인 240px 고정 대신 CSS(.search-field)로 — 모바일에서는 화면 폭에 맞춰 늘어나게 */}
+          <div className="field search-field">
+            <div className="prefix plain">
               <span><Icon name="search" size={14} /></span>
               <input
                 type="text"

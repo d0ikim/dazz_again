@@ -150,8 +150,9 @@ export default function ScreenConcerts({ navigate }) {
         <p className="muted" style={{ marginBottom: 18 }}>DAZZ에 등록된 뮤지션들의 공연 일정을 달력으로 확인하세요.</p>
 
         {/* 공연명 검색 */}
-        <div className="field" style={{ marginBottom: 16, width: 'auto', maxWidth: 320 }}>
-          <div className="prefix">
+        {/* 검색창 너비는 CSS(.search-field)로 — 데스크톱 240px, 모바일에서는 화면 폭에 맞춰 늘어남 */}
+        <div className="field search-field" style={{ marginBottom: 16 }}>
+          <div className="prefix plain">
             <span><Icon name="search" size={14} /></span>
             <input
               type="text"

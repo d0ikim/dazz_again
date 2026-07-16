@@ -154,7 +154,7 @@ function MusicianPicker({ navigate }) {
         </p>
 
         <div className="field" style={{ marginBottom: 16 }}>
-          <div className="prefix">
+          <div className="prefix plain">
             <span><Icon name="search" size={14} /></span>
             <input
               type="text"

@@ -52,7 +52,7 @@ export default function ScreenClaimExisting({ navigate, onSubmitRequest }) {
         <p className="muted" style={{ marginBottom: 20 }}>등록된 뮤지션 중 본인을 선택하세요. 동명이인 방지를 위해 악기를 함께 확인해주세요.</p>
 
         <div className="field" style={{ marginBottom: 16 }}>
-          <div className="prefix">
+          <div className="prefix plain">
             <span><Icon name="search" size={14} /></span>
             <input type="text" placeholder="본인 활동명 검색" value={query} onChange={(e) => setQuery(e.target.value)} />
           </div>

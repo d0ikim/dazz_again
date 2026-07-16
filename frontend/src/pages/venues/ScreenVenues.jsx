@@ -126,7 +126,7 @@ export default function ScreenVenues({ navigate }) {
 
         {/* 공연장명 검색 */}
         <div className="field" style={{ marginTop: 18, marginBottom: 16, width: 'auto' }}>
-          <div className="prefix">
+          <div className="prefix plain">
             <span><Icon name="search" size={14} /></span>
             <input
               type="text"
