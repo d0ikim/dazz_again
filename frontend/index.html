@@ -7,7 +7,9 @@
     <title>DAZZ — 한국재즈 뮤지션 플랫폼</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&family=Noto+Serif+KR:wght@400;700;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <!-- display=block: 웹폰트가 로드되기 전까지 텍스트를 잠깐 숨겼다가 처음부터 올바른 폰트로 표시 -->
+    <!-- (기존 display=swap은 기본 폰트로 먼저 보여준 뒤 웹폰트로 교체해서, 첫 화면에서 제목 글씨체가 1초쯤 바뀌어 보이는 현상이 있었음) -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&family=Noto+Serif+KR:wght@400;700;900&family=JetBrains+Mono:wght@400;500;600;700&display=block" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css" />
     <!-- 카카오맵 JavaScript SDK 로드 -->
     <!-- %VITE_KAKAO_MAP_KEY%: Vite가 빌드/개발 서버 실행 시 frontend/.env의 VITE_KAKAO_MAP_KEY 값으로 치환해줌 -->
