@@ -80,6 +80,8 @@ def parse_members(member_text):
 
     입력값: member_text = 예) "Guitar 현용선 @yongtothesun\nBass 임대섭 @limbass2673"
     반환값: (position, name, handle) 튜플의 리스트. handle은 없으면 None.
+            악기 표기가 아예 없는 "이름 @핸들"만 줄바꿈으로 나열된 형식이면
+            position은 None으로 채워진다 (아래 4번 참고).
     """
 
     # 불릿 기호(•)는 파싱에 방해되므로 공백으로 바꾼다
@@ -132,6 +134,33 @@ def parse_members(member_text):
         # 악기 표기를 표준 악기명으로 변환해서 결과에 추가
         position = INSTRUMENT_MAP[match.group(1).lower()]
         result.append((position, name, handle))
+
+    # 4) 악기 키워드가 하나도 안 잡힌 경우의 대안 경로.
+    #    부기우기는 사람이 자유롭게 적다 보니, "Quartet" 같은 제목에서는
+    #    "황인선 @insunjz\n임보라 @pianist_imbora" 처럼 악기 표기 없이
+    #    "이름 @핸들"만 줄바꿈으로 나열하기도 한다.
+    #    위 3)번 로직은 악기 키워드를 기준점으로 삼기 때문에 이런 경우 result가 계속 비어 있다.
+    #    → 그럴 때는 한 줄에 한 명씩 적혀 있다고 보고, 악기 정보 없이(position=None)
+    #      이름/핸들만 뽑아둔다. 악기를 모르므로 신규 뮤지션 등록에는 못 쓰지만,
+    #      이름/인스타로 DB에서 기존 뮤지션을 찾는 매칭(save_performances)에는 그대로 쓸 수 있다.
+    if not result and masked.strip():
+        for line in masked.split('\n'):
+            # 이 줄 안의 자리표시자 번호를 찾아 핸들을 복원 (없으면 None)
+            handle_match = re.search(r'\x00(\d+)\x00', line)
+            handle = handles[int(handle_match.group(1))] if handle_match else None
+
+            # 이름 = 줄에서 자리표시자를 지우고 앞뒤 구분기호/공백을 정리한 것
+            name = re.sub(r'\x00\d+\x00', '', line).strip(' ,/\n\t:-').strip()
+            name = re.sub(r'\s+', ' ', name)
+
+            if not name:
+                continue
+
+            # 안전장치: 한글도 없고 핸들도 없으면 사람 이름이 아닐 가능성이 크므로 버림
+            if not KOREAN_REGEX.search(name) and not handle:
+                continue
+
+            result.append((None, name, handle))
 
     return result
 
@@ -259,6 +288,13 @@ def collect_musicians():
 
         # 멤버 텍스트에서 (악기, 이름, 핸들) 뽑기
         for position, name, handle in parse_members(member_text):
+            # 악기 정보가 없으면(악기 표기 없는 "이름 @핸들" 형식이었던 경우) 건너뜀.
+            # 이 크롤러는 '신규' 뮤지션을 등록하는 용도라 musician.position(NOT NULL)이
+            # 반드시 있어야 INSERT할 수 있다. 이런 이름은 공연 크롤러 쪽에서
+            # 기존 DB 매칭(이름/인스타)으로 라인업에 연결되니 여기서는 그냥 스킵한다.
+            if position is None:
+                continue
+
             # 아직 없는 이름이면 등록 (이미 있으면 첫 등장 정보 유지)
             if name not in musicians_by_name:
                 musicians_by_name[name] = (position, handle)
