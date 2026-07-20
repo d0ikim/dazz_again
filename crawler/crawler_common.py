@@ -17,9 +17,10 @@
 #                                  이름이 같아도 악기가 안 겹치면 '동명이인'으로 보고 별도 INSERT)
 # [공연 저장 — performance / performance_lineup 테이블]
 # 6. get_venue_id()             → 공연장 이름으로 venue 테이블의 id 조회
-# 7. get_existing_performances()→ 이미 저장된 공연의 (일시, 제목) 조회 (중복 방지용)
-# 8. get_musician_lookup()      → 라인업 이름을 musician id로 바꾸기 위한 검색표 조회
-# 9. save_performances()        → 공연 리스트를 통째로 저장하고 라인업까지 연결
+# 7. get_existing_performances()→ 이미 저장된 공연을 {일시: [제목, ...]}로 조회 (중복 방지용)
+# 8. titles_match()             → 두 공연 제목이 같은 공연을 가리키는지 판별 (제목이 살짝 달라도 감지)
+# 9. get_musician_lookup()      → 라인업 이름을 musician id로 바꾸기 위한 검색표 조회
+# 10. save_performances()       → 공연 리스트를 통째로 저장하고 라인업까지 연결
 #                                 (공연 INSERT + performance_lineup INSERT,
 #                                  라인업 뮤지션이 DB에 없으면 musician까지 새로 INSERT)
 #
@@ -182,6 +183,36 @@ def positions_overlap(position_a, position_b):
 
     # & = 두 집합의 교집합. 하나라도 겹치면 True
     return len(to_standard_set(position_a) & to_standard_set(position_b)) > 0
+
+# ==================== 공연 제목 유사 판별 함수 (사이트가 제목을 수정해도 같은 공연으로 인식) ====================
+
+def titles_match(title_a, title_b):
+    """
+    두 공연 제목이 '같은 공연'을 가리키는지 판별하는 함수.
+
+    왜 필요한가 (제목 수정으로 인한 중복 저장 버그의 핵심 수정):
+      공연 중복 판단을 (일시, 제목) 완전 일치로만 하다 보니,
+      공연장이 게시글 제목을 나중에 살짝 고치면(예: 'LAZYKUMA ELECTRIC QUARTET'
+      → 'LAZYKUMA QUARTET'처럼 단어 하나를 빼거나 더하면) 크롤러가 이를 새 공연으로
+      착각해서 같은 시각에 같은 공연이 두 줄로 중복 저장되는 사고가 있었다.
+
+    비교 방법:
+      제목을 공백 기준으로 단어 집합으로 쪼갠 뒤, 한쪽 단어 집합이 다른 쪽에
+      완전히 포함되면(부분집합이면) 같은 공연으로 본다.
+      예: {'LAZYKUMA', 'QUARTET'} ⊂ {'LAZYKUMA', 'ELECTRIC', 'QUARTET'} → 같은 공연
+      ※ 같은 시각·같은 공연장이라는 전제가 이미 깔려 있어서(호출하는 쪽에서 필터링),
+        단어가 겹친다고 다른 공연을 같은 공연으로 잘못 합칠 위험은 낮다.
+
+    입력값: title_a, title_b = 비교할 공연 제목 문자열
+    반환값: 같은 공연으로 판단되면 True, 아니면 False
+    """
+
+    # 대소문자 차이를 무시하기 위해 소문자로 통일한 뒤, 공백 기준으로 단어 집합을 만든다
+    tokens_a = set(title_a.lower().split())
+    tokens_b = set(title_b.lower().split())
+
+    # <= 는 '부분집합인지' 검사하는 연산자. 어느 한쪽이 다른 쪽에 완전히 포함되면 같은 공연으로 판단
+    return tokens_a <= tokens_b or tokens_b <= tokens_a
 
 # ==================== 데이터베이스 연결 함수 ====================
 
@@ -632,13 +663,15 @@ def get_existing_performances(connection, venue_id):
     특정 공연장의 이미 저장된 공연들을 조회하는 함수.
 
     크롤러를 여러 번 실행해도 같은 공연이 중복 저장되지 않도록,
-    '(공연 일시, 공연명)' 조합을 중복 판단 기준으로 쓴다.
-    (같은 공연장에서 같은 시각에 같은 제목의 공연이 두 개일 수는 없으므로)
+    '공연 일시'가 같은 기존 공연 제목들을 모아둔다.
+    (같은 공연장·같은 시각에 저장된 제목들과 titles_match()로 유사도까지 비교해야
+     '제목만 살짝 수정된 같은 공연'을 진짜 중복으로 잡아낼 수 있다 — 완전 일치만 보면
+     사이트가 제목을 고쳤을 때 다른 공연으로 착각해 중복 저장하는 버그가 생긴다)
 
     입력값:
       - connection = 데이터베이스 연결 객체
       - venue_id   = 공연장 id
-    반환값: {(start_time, title), ...} 형태의 집합(set) — "이 조합은 이미 있다" 빠른 확인용
+    반환값: {start_time: [title, ...]} 형태의 딕셔너리 — 같은 시각에 저장된 제목 목록 조회용
     """
     try:
         # 쿼리를 실행할 커서 생성
@@ -647,8 +680,10 @@ def get_existing_performances(connection, venue_id):
         # 이 공연장의 모든 공연의 (일시, 제목) 조회
         cursor.execute("SELECT start_time, title FROM performance WHERE venue_id = %s;", (venue_id,))
 
-        # (일시, 제목) 튜플의 집합으로 변환 — set은 'in' 검사가 매우 빠르다
-        performances = {(row[0], row[1]) for row in cursor.fetchall()}
+        # 같은 일시(start_time)를 key로, 그 시각에 저장된 제목들을 리스트로 묶는다
+        performances = {}
+        for start_time, title in cursor.fetchall():
+            performances.setdefault(start_time, []).append(title)
 
         # 커서 종료
         cursor.close()
@@ -656,7 +691,7 @@ def get_existing_performances(connection, venue_id):
         return performances
     except Exception as e:
         print(f"✗ 기존 performance 조회 실패: {e}")
-        return set()
+        return {}
 
 # ==================== 뮤지션 검색표 조회 함수 ====================
 
@@ -811,7 +846,9 @@ def save_performances(connection, venue_name, performances, musician_source_type
     크롤러가 뽑아낸 공연 리스트를 통째로 DB에 저장하고 라인업까지 연결하는 함수.
 
     저장 규칙:
-      1. (공연 일시, 공연명)이 이미 DB에 있으면          → 건너뜀 (중복 방지)
+      1. 같은 일시에 저장된 기존 제목과 titles_match()로 같은 공연이라고 판단되면
+         → 건너뜀 (중복 방지. 제목이 완전히 똑같지 않아도 된다 — 예: 사이트가
+           'LAZYKUMA ELECTRIC QUARTET'를 'LAZYKUMA QUARTET'로 고친 경우도 잡아낸다)
       2. 없으면 performance INSERT 후, 라인업의 뮤지션마다:
          a. 활동명이 같고 '악기도 겹치는' 뮤지션이 있으면  → 그 id로 라인업 연결
             (이름만 같고 악기가 전혀 다르면 동명이인이므로 연결하지 않는다.
@@ -838,9 +875,10 @@ def save_performances(connection, venue_name, performances, musician_source_type
         print(f"✗ venue 테이블에 '{venue_name}' 공연장이 없어 저장을 중단합니다")
         return
 
-    # 이 공연장의 기존 공연 (일시, 제목) 집합 — 중복 방지용
+    # 이 공연장의 기존 공연 {일시: [제목, ...]} 딕셔너리 — 중복 방지용
     existing = get_existing_performances(connection, venue_id)
-    print(f"✓ '{venue_name}'(venue id={venue_id})의 기존 공연 {len(existing)}개 확인")
+    existing_count = sum(len(titles) for titles in existing.values())
+    print(f"✓ '{venue_name}'(venue id={venue_id})의 기존 공연 {existing_count}개 확인")
 
     # 뮤지션 검색표 (활동명 → [(id, 악기)] 리스트, 인스타 핸들 → id)
     name_to_entries, handle_to_id = get_musician_lookup(connection)
@@ -859,11 +897,13 @@ def save_performances(connection, venue_name, performances, musician_source_type
 
     # 공연을 하나씩 저장 시도
     for idx, perf in enumerate(performances, 1):
-        key = (perf['startTime'], perf['title'])
+        start_time = perf['startTime']
+        title = perf['title']
 
-        # ── 규칙 1: 이미 있는 (일시, 제목) 조합이면 건너뜀 ──
-        if key in existing:
-            print(f"[{idx}/{len(performances)}] ⏭ 스킵 (이미 존재): {perf['startTime']} {perf['title']}")
+        # ── 규칙 1: 같은 일시에 저장된 기존 제목 중 titles_match()로 같다고 판단되는 게 있으면 건너뜀 ──
+        is_duplicate = any(titles_match(title, existing_title) for existing_title in existing.get(start_time, []))
+        if is_duplicate:
+            print(f"[{idx}/{len(performances)}] ⏭ 스킵 (이미 존재): {start_time} {title}")
             skip_count += 1
             continue
 
@@ -873,8 +913,8 @@ def save_performances(connection, venue_name, performances, musician_source_type
             fail_count += 1
             continue
 
-        # 방금 넣은 공연도 기존 집합에 추가 → 크롤링 결과 안에 같은 공연이 또 있어도 중복 방지
-        existing.add(key)
+        # 방금 넣은 공연 제목도 기존 목록에 추가 → 크롤링 결과 안에 같은 공연이 또 있어도 중복 방지
+        existing.setdefault(start_time, []).append(title)
         insert_count += 1
 
         # ── 라인업 연결 ──
