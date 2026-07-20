@@ -28,12 +28,17 @@ const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
 //  임의 생성이 아닌 고정된 순서의 팔레트를 씀)
 const VENUE_HUES = [250, 40, 145, 320, 200, 28]; // 파랑/주황/초록/자홍/청록/와인(브랜드 기본색)
 
-// venueId로 팔레트에서 색을 하나 고르는 함수 — 같은 공연장은 항상 같은 색이 나오도록 id를 그대로 나눔
+// 범례 순서(hueIndex)로 팔레트에서 색을 하나 고르는 함수
 // bg: 칩 전체를 물들이는 옅은 파스텔 배경색 / fg: 그 위에서 읽히는 살짝 진한 글자색
 // (동그라미 하나보다 칸 전체를 색으로 물들이는 게 더 잘 구분된다는 피드백 반영,
 //  명도를 더 높이고 채도를 낮춰 파스텔톤으로 조정)
-function venueColor(venueId) {
-  const hue = VENUE_HUES[(venueId ?? 0) % VENUE_HUES.length];
+//
+// ※ 예전엔 venueId를 그대로 6으로 나눠서 색을 골랐는데, 그러면 id가 6 차이 나는
+//   두 공연장(예: 부기우기 id=2, 파닥파닥클럽 id=8 → 둘 다 %6=2)이 우연히 같은 색이
+//   될 수 있었다. venueId 대신 '지금 범례에 실제로 뜨는 순서(hueIndex)'로 색을 고르면
+//   현재 화면에 같이 보이는 공연장끼리는 항상 서로 다른 색이 배정된다.
+function venueColor(hueIndex) {
+  const hue = VENUE_HUES[(hueIndex ?? 0) % VENUE_HUES.length];
   return {
     bg: `oklch(0.95 0.045 ${hue})`,
     fg: `oklch(0.42 0.10 ${hue})`,
@@ -126,6 +131,14 @@ export default function ScreenConcerts({ navigate }) {
     return [...map.values()].sort((a, b) => a.id - b.id);
   }, [performances]);
 
+  // venueId → 범례에 뜨는 순서(hueIndex) 매핑 — venueColor()가 이 순서로 색을 고른다
+  // (범례에 같이 뜨는 공연장끼리 색이 겹치지 않도록, venueId를 그대로 쓰지 않고 순번을 새로 매김)
+  const venueHueIndex = useMemo(() => {
+    const map = new Map();
+    venueLegend.forEach((v, i) => map.set(v.id, i));
+    return map;
+  }, [venueLegend]);
+
   // 연도 드롭다운에 보여줄 연도 목록 — 등록된 공연이 실제로 있는 연도들 + 올해 + 현재 보고 있는 연도
   // (화살표로 데이터 범위 밖까지 이동해도 드롭다운에 현재 연도가 항상 존재하도록 viewDate 연도 포함)
   const yearOptions = useMemo(() => {
@@ -206,7 +219,7 @@ export default function ScreenConcerts({ navigate }) {
         {/* 공연장 범례 — 클릭하면 그 공연장의 공연만 필터링, 다시 누르면 전체 보기로 해제 */}
         <div className="cal-legend">
           {venueLegend.map((v) => {
-            const { bg, fg } = venueColor(v.id);
+            const { bg, fg } = venueColor(venueHueIndex.get(v.id));
             const isSelected = selectedVenueId === v.id;
             // 다른 공연장이 선택돼 있으면 이 항목은 흐리게 — 지금 뭐가 필터링 중인지 눈에 띄게
             const isDimmed = selectedVenueId !== null && !isSelected;
@@ -247,7 +260,7 @@ export default function ScreenConcerts({ navigate }) {
                 <span className="cal-day-num">{date.getDate()}</span>
                 <div className="cal-chips">
                   {visiblePerformances.map((p) => {
-                    const { bg, fg } = venueColor(p.venue?.id);
+                    const { bg, fg } = venueColor(venueHueIndex.get(p.venue?.id));
                     return (
                       <div
                         key={p.id}
