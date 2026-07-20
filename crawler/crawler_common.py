@@ -13,7 +13,8 @@
 # 3. insert_musician()          → 뮤지션 1명을 musician 테이블에 INSERT
 # 4. update_musician_image()    → 기존 뮤지션의 비어 있는 프로필사진만 UPDATE
 # 5. save_musicians()           → 뮤지션 리스트를 통째로 저장
-#                                 (신규는 INSERT, 기존인데 사진이 없으면 사진만 보완, 나머지는 스킵)
+#                                 (신규는 INSERT, 기존인데 사진이 없으면 사진만 보완, 나머지는 스킵.
+#                                  이름이 같아도 악기가 안 겹치면 '동명이인'으로 보고 별도 INSERT)
 # [공연 저장 — performance / performance_lineup 테이블]
 # 6. get_venue_id()             → 공연장 이름으로 venue 테이블의 id 조회
 # 7. get_existing_performances()→ 이미 저장된 공연의 (일시, 제목) 조회 (중복 방지용)
@@ -141,6 +142,47 @@ def extract_instagram_handle(url):
     # 대소문자 차이로 다른 사람 취급하지 않도록 소문자로 통일해서 반환
     return match.group(2).lower() if match else None
 
+# ==================== 악기 겹침 판별 함수 (동명이인 구분용) ====================
+
+def positions_overlap(position_a, position_b):
+    """
+    두 악기 문자열에 서로 겹치는 악기가 하나라도 있는지 판별하는 함수.
+
+    왜 필요한가 (동명이인 버그의 핵심 수정):
+      크롤러가 뮤지션을 '활동명'만으로 같은 사람인지 판단하다 보니,
+      베이시스트 '김종현'과 드러머 '김종현'처럼 이름이 같은 다른 사람의
+      사진/공연이 한 레코드에 합쳐지는 사고가 있었다.
+      → 이름이 같아도 악기가 전혀 안 겹치면 '다른 사람'으로 보기 위한 함수.
+
+    비교 방법:
+      사이트마다 악기 표기가 제각각이라 ('Drums' / 'DRUMS' / 'drum' / 'Keyboard,Piano')
+      콤마로 나눈 뒤 INSTRUMENT_MAP으로 표준 표기로 통일해서 집합끼리 비교한다.
+
+    입력값: position_a, position_b = 악기 문자열 (예: 'Drums,Percussion', 'BASS'. None 가능)
+    반환값: 겹치는 악기가 있으면 True, 하나도 없으면 False.
+            ※ 둘 중 하나라도 악기 정보가 없으면 판별이 불가능하므로,
+              (다른 사람이라고 확신할 수 없어) 기존 동작대로 '겹친다(True)'로 간주한다.
+    """
+
+    # 둘 중 하나라도 값이 없으면 → 판별 불가 → 겹치는 것으로 간주 (기존 동작 유지)
+    if not position_a or not position_b:
+        return True
+
+    def to_standard_set(value):
+        # 'Keyboard,Piano' → {'KEYBOARD', 'PIANO'} 처럼 표준 표기의 집합으로 변환하는 내부 함수
+        standards = set()
+        for token in value.split(','):          # 콤마로 악기를 하나씩 분리
+            token = token.strip().lower()       # 앞뒤 공백 제거 + 소문자 통일
+            if not token:                       # ',Drums'처럼 빈 조각이 생기면 건너뜀
+                continue
+            # 매핑표에 있으면 표준 표기로 변환 ('drum' → 'DRUMS'),
+            # 매핑표에 없는 낯선 표기면 대문자로만 통일해서 그대로 사용
+            standards.add(INSTRUMENT_MAP.get(token, token.upper()))
+        return standards
+
+    # & = 두 집합의 교집합. 하나라도 겹치면 True
+    return len(to_standard_set(position_a) & to_standard_set(position_b)) > 0
+
 # ==================== 데이터베이스 연결 함수 ====================
 
 def connect_db():
@@ -176,29 +218,40 @@ def get_existing_musicians(connection):
       2. 이미 있는 뮤지션인데 프로필사진이 비어 있으면,
          크롤링한 사진으로 채워주기 위한 '사진 유무' 확인
 
+    ※ 반환 형태가 '활동명 → 리스트'인 이유 (동명이인 대비):
+      원래는 {활동명: 정보} 형태였는데, 같은 활동명의 뮤지션이 두 명 있으면(동명이인)
+      뒤에 조회된 사람이 앞사람을 덮어써서 한 명이 검색표에서 사라지는 버그가 있었다.
+      (실제 사례: 베이시스트 '김종현'과 드러머 '김종현'의 사진/공연이 한 명에게 합쳐짐)
+      → 같은 이름의 뮤지션을 전부 보존하도록 리스트로 묶어 반환한다.
+
     입력값: connection = 데이터베이스 연결 객체
-    반환값: 딕셔너리 { 활동명: {'id': 뮤지션ID, 'hasImage': 사진있음여부(True/False)} }
+    반환값: 딕셔너리 { 활동명: [ {'id':..., 'position':..., 'hasImage':..., 'hasSns':..., 'handle':...}, ... ] }
     """
     try:
         # 쿼리를 실행할 커서 생성
         cursor = connection.cursor()
 
-        # 모든 뮤지션의 ID, 활동명, 프로필사진 URL, 인스타 URL 조회
-        cursor.execute("SELECT id, stage_name, profile_image_url, sns_url FROM musician;")
+        # 모든 뮤지션의 ID, 활동명, 악기, 프로필사진 URL, 인스타 URL 조회
+        # (악기는 동명이인을 구분하는 데 쓴다 → positions_overlap 참고)
+        cursor.execute("SELECT id, stage_name, position, profile_image_url, sns_url FROM musician;")
 
-        # 활동명을 키로 하는 딕셔너리로 변환.
+        # 활동명을 키로, '그 이름을 쓰는 뮤지션들의 리스트'를 값으로 하는 딕셔너리로 변환.
         # 사진 있음 판정: 실제 DB에는 NULL뿐 아니라 빈 문자열('')로 들어간 행도 있어서,
         # "NULL이 아니고, 공백을 뺀 내용이 있어야" 진짜 사진이 있는 것으로 본다.
         musicians = {}
         for row in cursor.fetchall():
-            image_value = row[2]
-            sns_value = row[3]
-            musicians[row[1]] = {
-                'id': row[0],   # 뮤지션 고유 번호 (UPDATE할 때 필요)
+            image_value = row[3]
+            sns_value = row[4]
+            entry = {
+                'id': row[0],        # 뮤지션 고유 번호 (UPDATE할 때 필요)
+                'position': row[2],  # 악기 (동명이인 구분용)
                 'hasImage': image_value is not None and image_value.strip() != '',
                 'hasSns': sns_value is not None and sns_value.strip() != '',   # SNS 보완 필요 여부 판단용
-                'handle': extract_instagram_handle(row[3]),  # 인스타 핸들 (같은 사람 판별용, 없으면 None)
+                'handle': extract_instagram_handle(sns_value),  # 인스타 핸들 (같은 사람 판별용, 없으면 None)
             }
+            # setdefault(키, 기본값) = 키가 없으면 기본값(빈 리스트)을 넣고 돌려주고, 있으면 기존 값을 돌려줌
+            # → 같은 이름이 또 나와도 덮어쓰지 않고 리스트에 추가된다
+            musicians.setdefault(row[1], []).append(entry)
 
         # 커서 종료 (자원 해제)
         cursor.close()
@@ -363,7 +416,7 @@ def save_musicians(connection, musicians):
     크롤러가 뽑아낸 뮤지션 리스트를 통째로 DB에 저장하는 함수.
 
     저장 규칙:
-      1. DB에 없는 활동명           → 새로 INSERT
+      1. DB에 '같은 사람'이 없으면    → 새로 INSERT
       2. 이미 있는데 사진/SNS가 비어 있고,
          크롤링 데이터에 그 값이 있음 → 비어 있는 항목만 UPDATE (보완)
       3. 그 외 (이미 있고 보완할 것도 없음) → 건너뜀 (기존 데이터 보호)
@@ -373,28 +426,45 @@ def save_musicians(connection, musicians):
       - 이번에 방금 넣은 활동명/핸들도 기억해서, 크롤링 결과 안에 같은 사람이
         또 나와도 중복 INSERT하지 않는다.
 
+    ※ '같은 사람' 판별 방법 (동명이인 병합 버그 수정의 핵심):
+      예전에는 활동명이 같으면 무조건 같은 사람으로 봤다. 그래서 드러머 '김종현'이
+      크롤링되면 이미 있던 베이시스트 '김종현'에게 사진이 잘못 합쳐졌다.
+      이제는 같은 이름의 후보들에 대해 순서대로:
+        a. 양쪽 다 인스타 핸들이 있으면 → 핸들이 같아야 같은 사람 (가장 강력한 근거)
+        b. 핸들로 판별할 수 없으면     → 악기가 하나라도 겹쳐야 같은 사람 (positions_overlap)
+      같은 이름인데 어느 후보와도 매칭되지 않으면 '동명이인'으로 보고 새 레코드로 INSERT한다.
+
+    ※ 한계 (여기까지도 못 잡는 경우): 이름도 같고 악기도 같고 인스타도 둘 다 없는 진짜
+      동명이인(예: 드러머 '김종현'이 두 명)은 이 데이터만으로 원리적으로 구분이 불가능하다.
+      이럴 땐 조용히 아무 후보에게나 합치지 않고, 악기가 겹치는 후보가 2명 이상이면
+      '⚠ 애매함' 경고를 찍고 그중 첫 번째로 잠정 연결한다 (틀릴 수 있으니 사람이 확인하라는 신호).
+
     입력값:
       - connection = 데이터베이스 연결 객체
       - musicians  = 뮤지션 정보 딕셔너리 리스트
     반환값: 없음 (결과를 화면에 요약 출력한다)
     """
 
-    # DB에 이미 있는 뮤지션 정보(활동명/사진유무/인스타핸들)를 미리 조회
+    # DB에 이미 있는 뮤지션 정보를 미리 조회 — {활동명: [뮤지션 정보들]} 형태 (동명이인 대비 리스트)
     existing = get_existing_musicians(connection)
-    print(f"✓ 기존 musician {len(existing)}개 확인\n")
+    # 이름당 여러 명일 수 있으므로, 전체 인원수는 리스트 길이를 전부 더해서 센다
+    total_existing = sum(len(entries) for entries in existing.values())
+    print(f"✓ 기존 musician {total_existing}개 확인\n")
 
-    # 인스타 핸들 → 활동명 빠른 검색표(인덱스)를 만든다.
+    # 인스타 핸들 → (활동명, 뮤지션 정보) 빠른 검색표(인덱스)를 만든다.
     # "이 핸들을 가진 뮤지션이 이미 있나?"를 빠르게 확인하기 위한 용도.
-    handle_to_name = {}
-    for name, info in existing.items():
-        if info['handle']:
-            handle_to_name[info['handle']] = name
+    handle_to_entry = {}
+    for existing_name, entries in existing.items():
+        for entry in entries:
+            if entry['handle']:
+                handle_to_entry[entry['handle']] = (existing_name, entry)
 
     # 결과 집계용 변수
-    insert_count = 0   # 새로 추가된 수
-    enrich_count = 0   # 기존 뮤지션의 사진을 보완한 수
-    skip_count = 0     # 건너뛴 수
-    fail_count = 0     # INSERT/UPDATE 실패 수
+    insert_count = 0     # 새로 추가된 수 (동명이인 신규 포함)
+    enrich_count = 0     # 기존 뮤지션의 사진/SNS를 보완한 수
+    skip_count = 0       # 건너뛴 수
+    fail_count = 0       # INSERT/UPDATE 실패 수
+    ambiguous_count = 0  # 악기까지 같은 후보가 여럿이라 확신 없이 매칭한 수 (수동 확인 필요)
 
     # 뮤지션을 하나씩 저장 시도
     for idx, musician in enumerate(musicians, 1):
@@ -403,18 +473,48 @@ def save_musicians(connection, musicians):
         # 크롤링한 뮤지션의 인스타 핸들 (없으면 None)
         handle = extract_instagram_handle(musician['snsUrl'])
 
-        # ── 규칙 4: 활동명은 다르지만 인스타 핸들이 같은 뮤지션이 이미 있는 경우 ──
-        # 같은 사람이 사이트마다 다른 표기로 등록된 것이므로 새로 INSERT하지 않는다.
-        if name not in existing and handle and handle in handle_to_name:
-            matched_name = handle_to_name[handle]   # DB에 이미 있는 그 사람의 활동명
+        # ── 1단계: 같은 활동명의 후보들 중에서 '같은 사람' 찾기 ──
+        # matched = 같은 사람으로 확인된 기존 뮤지션 정보 (못 찾으면 None 유지)
+        matched = None
+        # position_matches = 핸들로는 판별 못 했지만 악기가 겹치는 후보들을 전부 모아둔다.
+        # 끝까지 돌았는데 이게 2개 이상이면, 이름+악기가 전부 같은 '진짜 동명이인'일 수 있다는 뜻.
+        position_matches = []
+        for entry in existing.get(name, []):
+            # a. 양쪽 다 인스타 핸들이 있으면 핸들로 판별
+            #    (같으면 동일 인물 확정 / 다르면 이름이 같아도 확실히 다른 사람)
+            if handle and entry['handle']:
+                if handle == entry['handle']:
+                    matched = entry
+                    position_matches = []   # 핸들로 확정됐으니 애매함 목록은 의미 없음
+                    break
+                continue   # 핸들이 서로 다름 → 이 후보는 동명이인 → 다음 후보 확인
+
+            # b. 핸들로 판별할 수 없으면 악기가 겹치는지로 판단.
+            #    바로 확정 짓지 않고 후보 목록에 모아서, 끝까지 돈 뒤 몇 명이 겹치는지 센다.
+            if positions_overlap(entry['position'], musician['position']):
+                position_matches.append(entry)
+
+        # 핸들로 확정되지 않았고, 악기가 겹치는 후보가 있으면 그중 첫 번째를 사용.
+        # 후보가 2명 이상이면 '확신 없이 골랐다'는 뜻이므로 경고를 남긴다.
+        if matched is None and position_matches:
+            matched = position_matches[0]
+            if len(position_matches) > 1:
+                candidate_ids = [str(e['id']) for e in position_matches]
+                print(f"[{idx}/{len(musicians)}] ⚠ 애매함: '{name}' 동명이인 후보 {len(position_matches)}명"
+                      f"(id={','.join(candidate_ids)})이 악기도 겹치고 인스타로도 구분 불가"
+                      f" — 첫 번째(id={matched['id']})로 잠정 연결. 수동 확인 필요")
+                ambiguous_count += 1
+
+        # ── 2단계 (규칙 4): 활동명으로 못 찾았으면 인스타 핸들로 찾기 ──
+        # 같은 사람이 사이트마다 다른 표기로 등록된 경우 (예: 'Diego Bae' = 'Diego')
+        if matched is None and handle and handle in handle_to_entry:
+            matched_name, entry = handle_to_entry[handle]
             # 그 사람의 사진이 비어 있고 크롤링 데이터에 사진이 있으면 보완만 해준다
-            # (id가 None = 이번 실행에서 방금 INSERT한 사람 → UPDATE할 id를 모르므로 보완 생략)
-            if existing[matched_name]['id'] is not None \
-                    and not existing[matched_name]['hasImage'] and musician['profileImageUrl']:
-                if update_musician_image(connection, existing[matched_name]['id'], musician['profileImageUrl']):
+            if not entry['hasImage'] and musician['profileImageUrl']:
+                if update_musician_image(connection, entry['id'], musician['profileImageUrl']):
                     print(f"[{idx}/{len(musicians)}] 🖼 사진 보완: {matched_name} (인스타 동일: {name})")
                     enrich_count += 1
-                    existing[matched_name]['hasImage'] = True
+                    entry['hasImage'] = True
                 else:
                     fail_count += 1
             else:
@@ -422,32 +522,29 @@ def save_musicians(connection, musicians):
                 skip_count += 1
             continue
 
-        # ── 규칙 2, 3: 이미 있는 활동명인 경우 ──
-        if name in existing:
-            info = existing[name]
+        # ── 3단계 (규칙 2, 3): 같은 사람을 찾았으면 비어 있는 사진/SNS만 보완 ──
+        if matched is not None:
             enriched = []   # 이번에 보완한 항목 이름들 (출력용)
 
-            # id가 None = 이번 실행에서 방금 INSERT한 사람 → UPDATE할 id를 모르므로 보완 생략
-            if info['id'] is not None:
-                # 사진이 없는데 크롤링 데이터에 사진이 있으면 → 사진 보완
-                if not info['hasImage'] and musician['profileImageUrl']:
-                    if update_musician_image(connection, info['id'], musician['profileImageUrl']):
-                        info['hasImage'] = True   # 같은 이름이 또 나와도 다시 UPDATE하지 않도록 표시
-                        enriched.append('사진')
-                    else:
-                        fail_count += 1
+            # 사진이 없는데 크롤링 데이터에 사진이 있으면 → 사진 보완
+            if not matched['hasImage'] and musician['profileImageUrl']:
+                if update_musician_image(connection, matched['id'], musician['profileImageUrl']):
+                    matched['hasImage'] = True   # 같은 이름이 또 나와도 다시 UPDATE하지 않도록 표시
+                    enriched.append('사진')
+                else:
+                    fail_count += 1
 
-                # SNS가 없는데 크롤링 데이터에 인스타가 있으면 → SNS 보완
-                if not info['hasSns'] and musician['snsUrl']:
-                    if update_musician_sns(connection, info['id'], musician['snsUrl']):
-                        info['hasSns'] = True
-                        info['handle'] = handle
-                        # 핸들 검색표에도 추가 → 이후 같은 핸들이 다른 이름으로 와도 중복 INSERT 방지
-                        if handle:
-                            handle_to_name[handle] = name
-                        enriched.append('SNS')
-                    else:
-                        fail_count += 1
+            # SNS가 없는데 크롤링 데이터에 인스타가 있으면 → SNS 보완
+            if not matched['hasSns'] and musician['snsUrl']:
+                if update_musician_sns(connection, matched['id'], musician['snsUrl']):
+                    matched['hasSns'] = True
+                    matched['handle'] = handle
+                    # 핸들 검색표에도 추가 → 이후 같은 핸들이 다른 이름으로 와도 중복 INSERT 방지
+                    if handle:
+                        handle_to_entry[handle] = (name, matched)
+                    enriched.append('SNS')
+                else:
+                    fail_count += 1
 
             # 하나라도 보완했으면 보완으로 집계, 아니면 스킵
             if enriched:
@@ -458,16 +555,25 @@ def save_musicians(connection, musicians):
                 skip_count += 1
             continue
 
-        # ── 규칙 1: 없는 활동명이면 INSERT 시도 ──
-        if insert_musician(connection, musician):
-            print(f"[{idx}/{len(musicians)}] ✓ 추가: {name} ({musician['position']})")
+        # ── 4단계 (규칙 1): 어디에도 없으면 새로 INSERT ──
+        # 같은 이름이 있었는데 여기까지 왔다면 = 동명이인 → 별도 레코드로 추가된다
+        is_namesake = name in existing   # 같은 이름이 이미 있었는지 (출력 구분용)
+        new_id = insert_musician(connection, musician)
+        if new_id is not None:
+            print(f"[{idx}/{len(musicians)}] ✓ 추가{'(동명이인)' if is_namesake else ''}: {name} ({musician['position']})")
             insert_count += 1
-            # 방금 넣은 뮤지션도 기존 목록/핸들 검색표에 추가 → 뒤에 같은 사람이 또 나오면 스킵되도록
-            # (id는 이후 로직에서 쓰지 않으므로 None으로 둔다)
-            existing[name] = {'id': None, 'hasImage': musician['profileImageUrl'] is not None,
-                              'hasSns': musician['snsUrl'] is not None, 'handle': handle}
+            # 방금 넣은 뮤지션도 검색표에 추가 → 크롤링 결과 안에 같은 사람이 또 나오면 매칭되도록
+            # (insert_musician이 새 id를 돌려주므로, 이후 사진/SNS 보완도 가능하다)
+            new_entry = {
+                'id': new_id,
+                'position': musician['position'],
+                'hasImage': musician['profileImageUrl'] is not None,
+                'hasSns': musician['snsUrl'] is not None,
+                'handle': handle,
+            }
+            existing.setdefault(name, []).append(new_entry)
             if handle:
-                handle_to_name[handle] = name
+                handle_to_entry[handle] = (name, new_entry)
         else:
             fail_count += 1
 
@@ -477,6 +583,9 @@ def save_musicians(connection, musicians):
     print(f"🖼 보완(사진/SNS): {enrich_count}개")
     print(f"⏭ 중복 스킵: {skip_count}개")
     print(f"✗ 실패: {fail_count}개")
+    # 0건이면 안 찍어서 평소엔 안 보이게, 있을 때만 눈에 띄게 표시
+    if ambiguous_count > 0:
+        print(f"⚠ 애매한 동명이인 매칭: {ambiguous_count}건 — 위 로그에서 '⚠ 애매함' 줄을 찾아 수동 확인 필요")
     print("="*60 + "\n")
 
 # ════════════════════════════════════════════════════════════
@@ -557,36 +666,42 @@ def get_musician_lookup(connection):
 
     performance_lineup 테이블은 (공연 id, 뮤지션 id) 쌍을 저장하므로,
     크롤링한 라인업의 '이름'을 'id'로 변환해야 한다. 두 가지 검색표를 만든다:
-      1. 활동명 → id  (기본 검색)
+      1. 활동명 → [(id, 악기), ...]  (기본 검색. 동명이인이 있을 수 있어 리스트로 묶는다)
       2. 인스타 핸들 → id  (활동명 표기가 사이트마다 달라도 같은 사람을 찾기 위한 보조 검색.
                             예: 올댓재즈 'Diego Bae' = 부기우기 'Diego')
 
+    ※ 원래 1번이 '활동명 → id' 하나짜리였는데, 동명이인이 있으면 뒤사람이 앞사람을
+      덮어써서 다른 사람의 공연이 엉뚱한 뮤지션에게 연결되는 버그가 있었다.
+      (실제 사례: 드러머 '김종현'의 공연이 베이시스트 '김종현'에게 연결됨)
+      → 같은 이름을 전부 보존하고, 악기 비교(positions_overlap)로 올바른 사람을 고른다.
+
     입력값: connection = 데이터베이스 연결 객체
-    반환값: (name_to_id, handle_to_id) 딕셔너리 두 개의 튜플
+    반환값: (name_to_entries, handle_to_id) 딕셔너리 두 개의 튜플
     """
     try:
         # 쿼리를 실행할 커서 생성
         cursor = connection.cursor()
 
-        # 모든 뮤지션의 id, 활동명, SNS URL 조회
-        cursor.execute("SELECT id, stage_name, sns_url FROM musician;")
+        # 모든 뮤지션의 id, 활동명, 악기, SNS URL 조회 (악기는 동명이인 구분용)
+        cursor.execute("SELECT id, stage_name, position, sns_url FROM musician;")
 
-        name_to_id = {}     # 활동명 → id
-        handle_to_id = {}   # 인스타 핸들 → id
-        for row in cursor.fetchall():   # row = (5, '김이슬', 'Https://www.instagram.com/kis')
-            name_to_id[row[1]] = row[0] # name_to_id['김이슬'] = 5 <-이런식.
-            # 최종적으로 name_to_id = {'김이슬': 5, '이선지': 12, 'Diego Bae': 33, ...}
-            # 이 검색표 없으면, 라인업한명당 DB쿼리왕복이 한번씩 생기는데, 검색표를 미리 만들어두면 라인업한명당 딕셔너리 조회만으로 id를 바로 찾을 수 있다.
+        name_to_entries = {}   # 활동명 → [(id, 악기), ...]
+        handle_to_id = {}      # 인스타 핸들 → id
+        for row in cursor.fetchall():   # row = (5, '김이슬', 'Vocal,Piano', 'https://www.instagram.com/kis')
+            # name_to_entries['김이슬'] = [(5, 'Vocal,Piano')] <-이런식. 동명이인이면 같은 리스트에 추가된다.
+            # 이 검색표 없으면 라인업 한 명당 DB쿼리 왕복이 한 번씩 생기는데,
+            # 검색표를 미리 만들어두면 딕셔너리 조회만으로 id를 바로 찾을 수 있다.
+            name_to_entries.setdefault(row[1], []).append((row[0], row[2]))
 
             # SNS URL에서 인스타 핸들을 뽑아 보조 검색표에도 등록 (인스타가 아니면 None이라 제외)
-            handle = extract_instagram_handle(row[2])
+            handle = extract_instagram_handle(row[3])
             if handle:
                 handle_to_id[handle] = row[0]   # handle_to_id = {'kimdoii': 7, 'mona.jazz': 5, ...}
 
         # 커서 종료
         cursor.close()
 
-        return (name_to_id, handle_to_id)
+        return (name_to_entries, handle_to_id)
     except Exception as e:
         print(f"✗ musician 검색표 조회 실패: {e}")
         return ({}, {})
@@ -698,8 +813,10 @@ def save_performances(connection, venue_name, performances, musician_source_type
     저장 규칙:
       1. (공연 일시, 공연명)이 이미 DB에 있으면          → 건너뜀 (중복 방지)
       2. 없으면 performance INSERT 후, 라인업의 뮤지션마다:
-         a. 활동명이 musician 테이블에 있으면            → 그 id로 라인업 연결
-         b. 활동명은 없지만 인스타 핸들이 같은 사람이 있으면 → 그 id로 연결 (표기만 다른 동일 인물)
+         a. 활동명이 같고 '악기도 겹치는' 뮤지션이 있으면  → 그 id로 라인업 연결
+            (이름만 같고 악기가 전혀 다르면 동명이인이므로 연결하지 않는다.
+             실제 사례: 드러머 '김종현'의 공연이 베이시스트 '김종현'에게 잘못 연결됐었다)
+         b. 없으면 인스타 핸들이 같은 사람을 검색          → 그 id로 연결 (표기만 다른 동일 인물)
          c. 둘 다 없고 악기(position) 정보가 있으면       → musician을 새로 INSERT 후 연결
             (단, 그룹명으로 보이는 이름은 musician에 넣지 않으므로 연결도 생략)
          d. 둘 다 없고 악기 정보도 없으면                → 연결 생략 (누구인지 특정 불가)
@@ -725,9 +842,11 @@ def save_performances(connection, venue_name, performances, musician_source_type
     existing = get_existing_performances(connection, venue_id)
     print(f"✓ '{venue_name}'(venue id={venue_id})의 기존 공연 {len(existing)}개 확인")
 
-    # 뮤지션 검색표 (활동명 → id, 인스타 핸들 → id)
-    name_to_id, handle_to_id = get_musician_lookup(connection)
-    print(f"✓ 기존 musician 검색표 {len(name_to_id)}명 준비\n")
+    # 뮤지션 검색표 (활동명 → [(id, 악기)] 리스트, 인스타 핸들 → id)
+    name_to_entries, handle_to_id = get_musician_lookup(connection)
+    # 이름당 여러 명(동명이인)일 수 있으므로, 전체 인원수는 리스트 길이를 전부 더해서 센다
+    total_musicians = sum(len(entries) for entries in name_to_entries.values())
+    print(f"✓ 기존 musician 검색표 {total_musicians}명 준비\n")
 
     # 결과 집계용 변수
     insert_count = 0         # 새로 저장된 공연 수
@@ -736,6 +855,7 @@ def save_performances(connection, venue_name, performances, musician_source_type
     lineup_count = 0         # 연결된 라인업 행 수
     new_musician_count = 0   # 라인업에서 새로 INSERT된 뮤지션 수
     unmatched_count = 0      # 누구인지 특정하지 못해 연결을 생략한 수
+    ambiguous_count = 0      # 악기까지 같은 동명이인 후보가 여럿이라 확신 없이 연결한 수 (수동 확인 필요)
 
     # 공연을 하나씩 저장 시도
     for idx, perf in enumerate(performances, 1):
@@ -764,8 +884,24 @@ def save_performances(connection, venue_name, performances, musician_source_type
         for member in perf['lineup']:
             member_name = member['stageName']
 
-            # a. 활동명으로 검색
-            musician_id = name_to_id.get(member_name)
+            # a. 활동명으로 후보들을 찾고, 그중 '악기가 겹치는' 사람을 전부 모은다.
+            #    이름만 같고 악기가 전혀 다르면 동명이인이므로 후보에서 빠진다 → b, c로 넘어감.
+            #    (라인업에 악기 정보가 없으면 positions_overlap이 True를 돌려주므로
+            #     기존처럼 후보 전체가 겹침 취급된다 — 판별 불가 시 기존 동작 유지)
+            candidates = [
+                candidate_id
+                for candidate_id, candidate_position in name_to_entries.get(member_name, [])
+                if positions_overlap(candidate_position, member.get('position'))
+            ]
+            musician_id = candidates[0] if candidates else None
+
+            # 악기까지 같은 후보가 2명 이상이면, 이름+악기가 전부 같은 '진짜 동명이인'일 수 있다.
+            # 조용히 첫 번째로 넘어가지 않고 경고를 남겨 사람이 나중에 확인할 수 있게 한다.
+            if len(candidates) > 1:
+                print(f"[{idx}/{len(performances)}] ⚠ 애매함: '{member_name}' 라인업 연결 후보 {len(candidates)}명"
+                      f"(id={','.join(str(c) for c in candidates)})이 악기까지 겹쳐 구분 불가"
+                      f" — 첫 번째(id={musician_id})로 잠정 연결. 수동 확인 필요")
+                ambiguous_count += 1
 
             # b. 활동명으로 못 찾으면 인스타 핸들로 검색 (표기만 다른 동일 인물 대비)
             if musician_id is None:
@@ -795,7 +931,8 @@ def save_performances(connection, venue_name, performances, musician_source_type
                 musician_id = insert_musician(connection, new_musician)
                 if musician_id is not None:
                     # 검색표에도 등록 → 다른 공연 라인업에 같은 사람이 또 나오면 재사용
-                    name_to_id[member_name] = musician_id
+                    # (동명이인일 수 있으므로 덮어쓰지 않고 리스트에 추가한다)
+                    name_to_entries.setdefault(member_name, []).append((musician_id, member['position']))
                     new_musician_count += 1
 
             # d. 여기까지도 못 찾았으면 연결 생략
@@ -823,4 +960,6 @@ def save_performances(connection, venue_name, performances, musician_source_type
     print(f"✗ 실패: {fail_count}개")
     print(f"🎵 연결된 라인업: {lineup_count}명 (새로 추가된 뮤지션 {new_musician_count}명 포함)")
     print(f"❓ 특정 실패로 연결 생략: {unmatched_count}명")
+    if ambiguous_count > 0:
+        print(f"⚠ 애매한 동명이인 연결: {ambiguous_count}건 — 위 로그에서 '⚠ 애매함' 줄을 찾아 수동 확인 필요")
     print("="*60 + "\n")

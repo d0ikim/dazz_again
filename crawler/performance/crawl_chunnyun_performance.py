@@ -120,6 +120,10 @@ ABBREVIATION_MAP = {
     's': 'SAXOPHONE', 'ts': 'SAXOPHONE', 'as': 'SAXOPHONE', 'ss': 'SAXOPHONE',
     'fl': 'FLUTE', 'vn': 'VIOLIN', 'perc': 'PERCUSSION', 'org': 'KEYBOARD',
     'hm': 'HARMONICA',
+    # 'saxo' = 이 사이트가 실제로 쓰는 표기 (예: "Saxo. 이연재").
+    # 원래 이 표가 없어서 매칭 실패 → position이 None → fetch_lineup()이 그 줄 전체
+    # (악기+이름)를 통째로 버려서, 리더인 색소포니스트가 라인업에서 통째로 빠지는 문제가 있었음.
+    'saxo': 'SAXOPHONE',
 }
 
 # 이름 하나로 보기엔 너무 긴 '순한글 + 공백' 문자열인지 판별하는 패턴.
