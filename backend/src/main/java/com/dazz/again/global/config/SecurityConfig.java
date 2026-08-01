@@ -54,7 +54,11 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/performances").hasAuthority("MUSICIAN")  // 2. 뮤지션 본인 공연 이력 추가는 MUSICIAN만
                 .requestMatchers("/api/admin/**").hasAuthority("ADMIN")                          // 3. 관리자 API는 ADMIN만
                 .requestMatchers("/api/venues/**", "/api/musicians/**", "/api/performances/**").permitAll()  // 공연장/뮤지션/공연 조회는 누구나
-                .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()   // Swagger 문서는 누구나
+                .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()   // Swagger 문서는 누구나
+                // ↑ "/swagger-ui.html"을 따로 추가한 이유: springdoc이 제공하는 진입점 URL인데,
+                //   "/swagger-ui/**" 패턴은 슬래시 뒤에 뭔가 더 있어야 매칭돼서 이 경로 자체는 안 걸림.
+                //   그래서 이 줄이 없으면 이 URL만 인증되지 않은 요청으로 처리돼 401이 나고,
+                //   springdoc이 "/swagger-ui/index.html"로 리다이렉트해주는 것조차 못 감
                 .requestMatchers("/oauth2/**", "/login/**").permitAll()             // 카카오 로그인 URL은 누구나
                 .anyRequest().authenticated()                                        // 나머지는 로그인 필요
             )
