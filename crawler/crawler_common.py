@@ -70,6 +70,10 @@ INSTRUMENT_MAP = {
     # --- 영어 표기 ---
     'tenor saxophone': 'SAXOPHONE', 'alto saxophone': 'SAXOPHONE', 'bass clarinet': 'CLARINET',
     'double bass': 'BASS', 'tenorsax': 'SAXOPHONE', 'saxophone': 'SAXOPHONE', 'trombone': 'TROMBONE',
+    # T.sax(테너)/A.sax(알토)/S.sax(소프라노)/B.sax(바리톤) 약어 표기.
+    # 이 매핑이 없으면 'sax'만 악기로 인식되고 앞의 'T.'가 안 잡혀서
+    # 다음 줄로 밀려 다음 사람 이름 끝에 "이름 T." 처럼 붙어버린다.
+    't.sax': 'SAXOPHONE', 'a.sax': 'SAXOPHONE', 's.sax': 'SAXOPHONE', 'b.sax': 'SAXOPHONE',
     'trumpet': 'TRUMPET', 'clarinet': 'CLARINET', 'keyboard': 'KEYBOARD', 'guitar': 'GUITAR',
     'violin': 'VIOLIN', 'flute': 'FLUTE', 'vocal': 'VOCAL', 'piano': 'PIANO', 'drums': 'DRUMS',
     'drum': 'DRUMS', 'harp': 'HARP', 'bass': 'BASS', 'cello': 'CELLO', 'oud': 'OUD', 'sax': 'SAXOPHONE',
